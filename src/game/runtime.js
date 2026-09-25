@@ -6,8 +6,8 @@
   }
   const {loadThree,loadObject,saveObject}=CyberRace.core;
   const {CONFIG,SETTINGS_DEFAULTS,createTrackEnvironment,resolveLapCompletion}=CyberRace.game;
-  const {getDifficulty,chooseLaneTarget,computeOpponentSpeed,avoidanceLaneTarget,opponentAttackGeometry,computeLeadShot2D}=CyberRace.ai;
-  const {createSegmentSphereHit,selectRocketTarget,estimateLeadTime,homingBlend,updateRocketProgress}=CyberRace.weapons;
+  const {getDifficulty,stepOpponentFrame,planOpponentAttack}=CyberRace.ai;
+  const {createSegmentSphereHit,selectRocketTarget,stepHomingProjectile}=CyberRace.weapons;
   const {AudioSys}=CyberRace.audio;
   const {getUiElements,createMinimap,buildRacePositions,raceProgressPercent,healthPercent}=CyberRace.ui;
 
@@ -764,7 +764,6 @@
     const projectilePrevious=new THREE.Vector3();
     const projectileTargetPos=new THREE.Vector3();
     const projectileTargetVel=new THREE.Vector3();
-    const projectileDirection=new THREE.Vector3();
     const projectileLookPoint=new THREE.Vector3();
     const projectileTrailPos=new THREE.Vector3();
     const bulletGeometry=new THREE.BoxGeometry(0.09,0.09,1.6);
@@ -1348,52 +1347,35 @@
           }
         }
 
-        o.laneChangeTimer-=dt;
-        if(o.laneChangeTimer<=0){
-          o.laneChangeTimer=2.2+Math.random()*4.2;
-          o.targetOffset=chooseLaneTarget(Math.random(),CONFIG.ROAD_HALF);
-        }
-        o.offset=THREE.MathUtils.lerp(o.offset,o.targetOffset,1-Math.exp(-0.75*dt));
-        o.bumpVelocity*=Math.exp(-5.5*dt);
-        o.bumpOffset=THREE.MathUtils.clamp((o.bumpOffset+o.bumpVelocity*dt)*Math.exp(-1.8*dt),-5.5,5.5);
-
-        // Использование нитро соперниками
-        if((o.nitroCharges||0)>0&&Math.random()<0.9*dt){
-          o.nitroCharges--;
-          o.nitroTimer = 2.5;
-        }
-
-        const nitroActive=o.nitroTimer>0;
-        const speedBoostActive=o.speedBoostTimer>0;
-        if(nitroActive)o.nitroTimer=Math.max(0,o.nitroTimer-dt);
-        if(speedBoostActive)o.speedBoostTimer=Math.max(0,o.speedBoostTimer-dt);
-        const playerProgress=(player.lap-1)+player.prevT;
-        const botProgress=(o.lap-1)+o.t;
-        let effSpeed=computeOpponentSpeed({
-          baseSpeed:o.baseSpeed,difficultySpeed:difficulty().botSpeed,slowed:o.slowTimer>0,
-          nitro:nitroActive,speedBoost:speedBoostActive,playerProgress,botProgress,
-          minRubberBand:CONFIG.BOT_MIN_RUBBER_BAND,maxRubberBand:CONFIG.BOT_MAX_RUBBER_BAND,maxSpeed:CONFIG.MAX_SPEED
-        });
-        for(const other of opponents){
-          if(other===o||other.dead)continue;
-          let ahead=other.t-o.t;
-          if(ahead<0)ahead+=1;
-          const sameLap=other.lap===o.lap||(o.t>0.88&&other.t<0.12&&other.lap===o.lap+1);
-          const closeLane=Math.abs((other.offset+other.bumpOffset)-(o.offset+o.bumpOffset))<6.5;
-          const closeWorld=o.car.group.position.distanceToSquared(other.car.group.position)<CONFIG.BOT_AVOIDANCE_RANGE**2;
-          if(sameLap&&ahead>0&&ahead<0.035&&closeLane&&closeWorld){
-            effSpeed*=0.82;
-            o.targetOffset=avoidanceLaneTarget(o.targetOffset,o.id,CONFIG.ROAD_HALF);
-            break;
+        const motion=stepOpponentFrame({
+          id:o.id,laneChangeTimer:o.laneChangeTimer,targetOffset:o.targetOffset,offset:o.offset,
+          bumpVelocity:o.bumpVelocity,bumpOffset:o.bumpOffset,nitroCharges:o.nitroCharges,
+          nitroTimer:o.nitroTimer,speedBoostTimer:o.speedBoostTimer,slowTimer:o.slowTimer,
+          baseSpeed:o.baseSpeed,lap:o.lap,t:o.t
+        },{
+          roadHalf:CONFIG.ROAD_HALF,difficultySpeed:difficulty().botSpeed,
+          playerProgress:(player.lap-1)+player.prevT,
+          minRubberBand:CONFIG.BOT_MIN_RUBBER_BAND,maxRubberBand:CONFIG.BOT_MAX_RUBBER_BAND,
+          maxSpeed:CONFIG.MAX_SPEED,totalLength,totalLaps:CONFIG.TOTAL_LAPS,
+          shouldAvoid:({offset,bumpOffset})=>{
+            for(const other of opponents){
+              if(other===o||other.dead)continue;
+              let ahead=other.t-o.t;
+              if(ahead<0)ahead+=1;
+              const sameLap=other.lap===o.lap||(o.t>0.88&&other.t<0.12&&other.lap===o.lap+1);
+              const closeLane=Math.abs((other.offset+other.bumpOffset)-(offset+bumpOffset))<6.5;
+              const closeWorld=o.car.group.position.distanceToSquared(other.car.group.position)<CONFIG.BOT_AVOIDANCE_RANGE**2;
+              if(sameLap&&ahead>0&&ahead<0.035&&closeLane&&closeWorld)return true;
+            }
+            return false;
           }
-        }
-        effSpeed=Math.min(effSpeed,CONFIG.MAX_SPEED*1.48);
-
-        o.t+=(effSpeed/totalLength)*dt;
-        if(o.t>=1){
-          o.t%=1; o.lap++;
-          if(o.lap>CONFIG.TOTAL_LAPS){finishGame(false); return;}
-        }
+        },dt,Math.random);
+        o.laneChangeTimer=motion.laneChangeTimer;o.targetOffset=motion.targetOffset;o.offset=motion.offset;
+        o.bumpVelocity=motion.bumpVelocity;o.bumpOffset=motion.bumpOffset;
+        o.nitroCharges=motion.nitroCharges;o.nitroTimer=motion.nitroTimer;o.speedBoostTimer=motion.speedBoostTimer;
+        o.t=motion.t;o.lap=motion.lap;
+        const effSpeed=motion.effSpeed;
+        if(motion.finished){finishGame(false);return;}
         const pt=trackCurve.getPointAt(o.t),tg=trackCurve.getTangentAt(o.t).normalize();
         const perp=new THREE.Vector3(-tg.z,0,tg.x).normalize();
         const laneOffset=o.offset+o.bumpOffset;
@@ -1421,20 +1403,45 @@
 
         o.attackCooldown-=dt;
         if(o.attackCooldown<=0){
-          const attack=opponentAttackGeometry(
-            {x:o.car.group.position.x,z:o.car.group.position.z},
-            {x:player.pos.x,z:player.pos.z},
-            {x:tg.x,z:tg.z}
-          );
-          const dist=attack.distance,facing=attack.facing;
-          const diff=difficulty();
-          if(!player.destroyed&&player.invincibleTimer<=0&&dist>0.001&&dist<diff.attackRange&&facing>diff.minFacing&&Math.random()<0.66&&projectiles.length<CONFIG.MAX_PROJECTILES){
-            const shot=computeLeadShot2D({
-              origin:{x:o.car.group.position.x,z:o.car.group.position.z},
-              target:{x:player.pos.x,z:player.pos.z},
-              targetVelocity:{x:Math.sin(player.heading)*player.speed,z:Math.cos(player.heading)*player.speed},
-              projectileSpeed:118,maxLead:0.34,spreadRadians:(Math.random()-0.5)*diff.aimSpread
+          const tgForAttack=trackCurve.getTangentAt(o.t).normalize();
+          const attackPlan=planOpponentAttack({
+            origin:{x:o.car.group.position.x,z:o.car.group.position.z},
+            target:{x:player.pos.x,z:player.pos.z},
+            targetVelocity:{x:Math.sin(player.heading)*player.speed,z:Math.cos(player.heading)*player.speed},
+            forward:{x:tgForAttack.x,z:tgForAttack.z},
+            difficulty:difficulty(),
+            playerDestroyed:player.destroyed,playerInvincible:player.invincibleTimer,
+            projectileCount:projectiles.length,maxProjectiles:CONFIG.MAX_PROJECTILES,
+            rockets:o.rockets,gunAmmo:o.gunAmmo,playerLap:player.lap
+          },Math.random);
+          const shotX=attackPlan.shotX,shotZ=attackPlan.shotZ,dist=attackPlan.distance;
+          if(attackPlan.kind==='rocket'){
+            o.rockets--;
+            const start=o.car.group.position.clone().add(new THREE.Vector3(shotX*3.5,1.4,shotZ*3.5));
+            const rocket=createRocketMesh(0xff4444,0xff0000,'opponent');
+            rocket.position.copy(start);
+            rocket.lookAt(start.clone().sub(new THREE.Vector3(shotX,0,shotZ)));
+            scene.add(rocket);
+            projectiles.push({
+              mesh:rocket,vel:new THREE.Vector3(shotX*CONFIG.BOT_ROCKET_SPEED,0,shotZ*CONFIG.BOT_ROCKET_SPEED),
+              life:CONFIG.BOT_ROCKET_LIFE,damage:30,owner:'opponent',ownerRef:o,
+              target:player,turnSpeed:4.2,isRocket:true,age:0,noProgress:0,trailTimer:0,
+              lastTargetDistance:player.pos.distanceTo(start)
             });
+            particles.spawn(start,0xff6622,5,5,0.28,0.12,false,true);
+            audio.play('rocket');
+          }else if(attackPlan.kind==='bullet'){
+            o.gunAmmo--;
+            const start=o.car.group.position.clone().add(new THREE.Vector3(shotX*3,1.0,shotZ*3));
+            const bullet=createBulletMesh('opponent');
+            bullet.position.copy(start);bullet.lookAt(start.clone().add(new THREE.Vector3(shotX,0,shotZ)));scene.add(bullet);
+            projectiles.push({mesh:bullet,vel:new THREE.Vector3(shotX*108,0,shotZ*108),life:1.15,damage:9,owner:'opponent',ownerRef:o,isRocket:false,age:0,sharedResources:true,poolKey:'opponent'});
+            particles.spawn(start,0xff9955,2,2.5,0.12,0.08,false,true);
+            audio.play('shoot');
+          }
+          o.attackCooldown=attackPlan.cooldown;
+        }
+      });
             const shotX=shot.x,shotZ=shot.z;
             if(o.rockets>0&&dist>28&&Math.random()<0.6){
               o.rockets--;
@@ -1517,27 +1524,24 @@
           ? !gameFinished&&!player.destroyed
           : Boolean(p.target&&!p.target.dead&&p.target.health>0);
 
+        let rocketStep=null;
         if(p.isRocket&&targetValid){
           const targetPos=getTargetPosition(p.target,projectileTargetPos);
           const targetVel=getTargetVelocity(p.target,projectileTargetVel);
-          const distance=p.mesh.position.distanceTo(targetPos);
+          rocketStep=stepHomingProjectile({
+            position:{x:p.mesh.position.x,y:p.mesh.position.y,z:p.mesh.position.z},
+            velocity:{x:p.vel.x,y:p.vel.y,z:p.vel.z},
+            targetPosition:{x:targetPos.x,y:targetPos.y,z:targetPos.z},
+            targetVelocity:{x:targetVel.x,y:targetVel.y,z:targetVel.z},
+            turnSpeed:p.turnSpeed||4,dt,lastTargetDistance:p.lastTargetDistance,noProgress:p.noProgress||0,maxLead:0.55
+          });
+          const distance=rocketStep.distance;
           if(p.target===player&&p.owner!=='player')incomingThreat=Math.min(incomingThreat,distance);
-          const speed=Math.max(1,p.vel.length());
-          const leadTime=estimateLeadTime(distance,speed,0.55);
-          targetPos.addScaledVector(targetVel,leadTime);
-
-          const desired=targetPos.sub(p.mesh.position).normalize();
-          const current=projectileDirection.copy(p.vel).normalize();
-          const blend=homingBlend(p.turnSpeed||4,dt);
-          current.lerp(desired,blend).normalize();
-          p.vel.copy(current).multiplyScalar(speed);
+          p.vel.set(rocketStep.velocity.x,rocketStep.velocity.y,rocketStep.velocity.z);
           p.mesh.lookAt(projectileLookPoint.copy(p.mesh.position).sub(p.vel));
-
-          const progressState=updateRocketProgress(distance,p.lastTargetDistance,p.noProgress||0,dt);
-          p.noProgress=progressState.noProgress;
+          p.noProgress=rocketStep.noProgress;
           p.lastTargetDistance=distance;
 
-          // Proximity fuse prevents circles around a target after overshooting it.
           if(distance<=CONFIG.ROCKET_HIT_RADIUS+2.5){
             if(p.owner==='player'&&p.target!==player){
               const rocketDamage=(p.damage||35)*(p.target.shieldTimer>0?0.35:1);
@@ -1552,15 +1556,14 @@
             continue;
           }
 
-          if(progressState.stalled){
-            p.life=Math.min(p.life,0.25);
-          }
+          if(rocketStep.stalled)p.life=Math.min(p.life,0.25);
         }else if(p.isRocket&&p.target){
           p.target=null;
           p.life=Math.min(p.life,0.45);
         }
 
-        p.mesh.position.addScaledVector(p.vel,dt);
+        if(rocketStep)p.mesh.position.set(rocketStep.position.x,rocketStep.position.y,rocketStep.position.z);
+        else p.mesh.position.addScaledVector(p.vel,dt);
         if(p.isRocket){
           p.trailTimer=(p.trailTimer||0)-dt;
           if(p.trailTimer<=0){

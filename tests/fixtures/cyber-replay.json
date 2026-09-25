@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "opponent": {
+    "seed": 1337,
+    "frames": 180,
+    "dt": 0.03333333333333333,
+    "state": {
+      "id": 2,
+      "laneChangeTimer": 0.15,
+      "targetOffset": 1.5,
+      "offset": -2,
+      "bumpVelocity": 2.2,
+      "bumpOffset": -0.4,
+      "nitroCharges": 3,
+      "nitroTimer": 0,
+      "speedBoostTimer": 2,
+      "slowTimer": 0,
+      "baseSpeed": 37,
+      "lap": 1,
+      "t": 0.72
+    },
+    "context": {
+      "roadHalf": 34,
+      "difficultySpeed": 1.05,
+      "playerProgress": 1.35,
+      "minRubberBand": 0.88,
+      "maxRubberBand": 1.12,
+      "maxSpeed": 52,
+      "totalLength": 780,
+      "totalLaps": 15,
+      "avoidOffsetThreshold": 8
+    },
+    "expected": {
+      "lap": 2,
+      "t": 0.1593892,
+      "offset": 8.384945542,
+      "targetOffset": 21.08,
+      "nitroCharges": 1,
+      "laneChanges": 2,
+      "nitroUses": 2,
+      "avoidanceFrames": 2,
+      "wraps": 1
+    }
+  },
+  "attack": {
+    "seed": 7331,
+    "iterations": 12,
+    "initial": {
+      "origin": {
+        "x": 0,
+        "z": 0
+      },
+      "target": {
+        "x": 0,
+        "z": 90
+      },
+      "targetVelocity": {
+        "x": 12,
+        "z": 3
+      },
+      "forward": {
+        "x": 0,
+        "z": 1
+      },
+      "difficulty": {
+        "attackRange": 150,
+        "minFacing": 0.45,
+        "aimSpread": 0.08,
+        "attackDelay": 1
+      },
+      "playerDestroyed": false,
+      "playerInvincible": 0,
+      "projectileCount": 2,
+      "maxProjectiles": 40,
+      "rockets": 4,
+      "gunAmmo": 60,
+      "playerLap": 5
+    },
+    "targetStep": {
+      "x": 1.2,
+      "z": 0.3
+    },
+    "expected": {
+      "kinds": [
+        "rocket",
+        "rocket",
+        "none",
+        "bullet",
+        "none",
+        "rocket",
+        "none",
+        "none",
+        "bullet",
+        "rocket",
+        "bullet",
+        "bullet"
+      ],
+      "rockets": 0,
+      "gunAmmo": 56,
+      "cooldownSum": 18.908544
+    }
+  },
+  "rocket": {
+    "frames": 90,
+    "dt": 0.016666666666666666,
+    "state": {
+      "position": {
+        "x": 0,
+        "y": 1.4,
+        "z": 0
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0,
+        "z": 155
+      },
+      "targetPosition": {
+        "x": 34,
+        "y": 0.9,
+        "z": 140
+      },
+      "targetVelocity": {
+        "x": 12,
+        "y": 0,
+        "z": 18
+      },
+      "turnSpeed": 7.5,
+      "noProgress": 0
+    },
+    "expected": {
+      "position": {
+        "x": 87.116856,
+        "y": 0.972941,
+        "z": 209.58373
+      },
+      "velocity": {
+        "x": 141.352346,
+        "y": 1.129372,
+        "z": 63.586466
+      },
+      "lastDistance": 52.891623,
+      "noProgress": 0.416667,
+      "minDistance": 0.827942
+    }
+  }
+}

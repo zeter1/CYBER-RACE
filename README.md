@@ -161,6 +161,7 @@ Deep Gameplay Decomposition разделяет browser runtime по реальн
 ```text
 index.html
 ├── src/core/
+│   └── seeded-rng.js
 ├── src/game/
 │   ├── config.js
 │   ├── race-state.js
@@ -177,12 +178,15 @@ index.html
 │   ├── elements.js
 │   ├── hud-model.js
 │   └── minimap.js
-├── tests/contracts.mjs
+├── tests/
+│   ├── contracts.mjs
+│   ├── scenarios.mjs
+│   └── fixtures/cyber-replay.json
 ├── scripts/validate-structure.mjs
 └── docs/ARCHITECTURE.md
 ```
 
-Pure gameplay math имеет Node-compatible contract tests, а `src/game/runtime.js` остаётся orchestration/rendering boundary. Подробности: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+Pure gameplay math имеет Node-compatible contract tests. В 2.2 opponent frame/attack и homing projectile работают как dependency-injected simulation contracts, а seeded replay fixtures проверяют целые последовательности кадров. `src/game/runtime.js` остаётся orchestration/rendering boundary. Подробности: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ## Диагностика
 
@@ -201,7 +205,7 @@ Pure gameplay math имеет Node-compatible contract tests, а `src/game/runti
 
 - Текущая версия ориентирована прежде всего на ПК с клавиатурой и мышью.
 - Three.js загружается через внешние CDN, поэтому полностью автономный офлайн-запуск требует локальной копии библиотеки.
-- Rendering object lifecycle, input и часть side-effect-heavy gameplay orchestration пока остаются в `src/game/runtime.js`; чистая track/AI/ballistics/HUD/state математика уже вынесена.
+- Rendering object lifecycle, input, effects и damage side effects остаются в `src/game/runtime.js`; opponent frame/attack и homing kinematics уже работают через чистые dependency-injected simulation contracts.
 - Полного browser end-to-end набора пока нет; интерактивный gameplay требует отдельной runtime-проверки.
 - CI проверяет структуру HTML, синтаксис встроенного JavaScript и статическую раздачу проекта, но не заменяет реальную WebGL/gameplay-проверку.
 
@@ -212,7 +216,8 @@ Workflow [`.github/workflows/validate.yml`](.github/workflows/validate.yml) за
 - синтаксис всех JavaScript-файлов;
 - архитектурную структуру и порядок подключения модулей;
 - contract tests для track lookup, AI, collision/ballistics, HUD и lap state transitions;
-- отсутствие возврата вынесенной subsystem logic в runtime;
+- deterministic replay scenarios для opponent frame/attack и homing rocket;
+- отсутствие возврата вынесенной simulation logic в runtime;
 - headless Chrome/WebGL boot через локальный HTTP-сервер до маркера `data-cyber-boot="ready"`;
 - diff hygiene через `git diff --check`.
 

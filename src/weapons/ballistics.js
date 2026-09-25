@@ -29,5 +29,49 @@
     }
     return target;
   }
-  return {estimateLeadTime,homingBlend,updateRocketProgress,selectRocketTarget};
+
+  function vectorLength(vector){
+    return Math.hypot(Number(vector?.x)||0,Number(vector?.y)||0,Number(vector?.z)||0);
+  }
+  function normalized(vector){
+    const length=vectorLength(vector);
+    if(length<=1e-12)return {x:0,y:0,z:0};
+    return {x:(Number(vector?.x)||0)/length,y:(Number(vector?.y)||0)/length,z:(Number(vector?.z)||0)/length};
+  }
+  function stepHomingProjectile(state){
+    const dt=Math.max(0,Number(state?.dt)||0);
+    const position={x:Number(state?.position?.x)||0,y:Number(state?.position?.y)||0,z:Number(state?.position?.z)||0};
+    const velocity={x:Number(state?.velocity?.x)||0,y:Number(state?.velocity?.y)||0,z:Number(state?.velocity?.z)||0};
+    const targetPosition={x:Number(state?.targetPosition?.x)||0,y:Number(state?.targetPosition?.y)||0,z:Number(state?.targetPosition?.z)||0};
+    const targetVelocity={x:Number(state?.targetVelocity?.x)||0,y:Number(state?.targetVelocity?.y)||0,z:Number(state?.targetVelocity?.z)||0};
+    const distance=Math.hypot(targetPosition.x-position.x,targetPosition.y-position.y,targetPosition.z-position.z);
+    const speed=Math.max(1,vectorLength(velocity));
+    const leadTime=estimateLeadTime(distance,speed,Number(state?.maxLead)||0.55);
+    const predicted={
+      x:targetPosition.x+targetVelocity.x*leadTime,
+      y:targetPosition.y+targetVelocity.y*leadTime,
+      z:targetPosition.z+targetVelocity.z*leadTime
+    };
+    const desired=normalized({x:predicted.x-position.x,y:predicted.y-position.y,z:predicted.z-position.z});
+    const current=normalized(velocity);
+    const blend=homingBlend(Number(state?.turnSpeed)||4,dt);
+    const blended=normalized({
+      x:current.x+(desired.x-current.x)*blend,
+      y:current.y+(desired.y-current.y)*blend,
+      z:current.z+(desired.z-current.z)*blend
+    });
+    const nextVelocity={x:blended.x*speed,y:blended.y*speed,z:blended.z*speed};
+    const progress=updateRocketProgress(distance,Number(state?.lastTargetDistance),Number(state?.noProgress)||0,dt);
+    const nextPosition={
+      x:position.x+nextVelocity.x*dt,
+      y:position.y+nextVelocity.y*dt,
+      z:position.z+nextVelocity.z*dt
+    };
+    return {
+      position:nextPosition,velocity:nextVelocity,distance,speed,leadTime,
+      noProgress:progress.noProgress,stalled:progress.stalled
+    };
+  }
+
+  return {estimateLeadTime,homingBlend,updateRocketProgress,selectRocketTarget,stepHomingProjectile};
 });

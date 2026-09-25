@@ -2,7 +2,7 @@
 
 ## Цель
 
-CYBER RACE развивается как browser-first Three.js/WebGL проект с поэтапным разделением gameplay без one-shot rewrite. Runtime остаётся orchestration layer, а математика и subsystem contracts выносятся в отдельные тестируемые модули.
+CYBER RACE развивается как browser-first Three.js/WebGL проект с поэтапным разделением gameplay без one-shot rewrite. Runtime остаётся orchestration/rendering layer, а детерминированная simulation math вынесена в dependency-injected pure contracts.
 
 ## Bootstrap
 
@@ -10,56 +10,50 @@ CYBER RACE развивается как browser-first Three.js/WebGL проек
 
 1. `src/core/three-loader.js` — Three.js CDN + fallback.
 2. `src/core/storage.js` — localStorage boundary.
-3. `src/game/config.js` — gameplay constants.
-4. `src/game/race-state.js` — чистые переходы состояния кругов/финиша.
-5. `src/game/track-environment.js` — трасса, road/environment generation, nearest-track lookup.
-6. `src/ai/difficulty.js` — profiles сложности.
-7. `src/ai/opponent-brain.js` — lane choice, rubber-band speed, attack geometry и lead aiming.
-8. `src/weapons/geometry.js` — swept segment/sphere collision contract.
-9. `src/weapons/ballistics.js` — lock selection, lead time, homing и rocket progress.
-10. `src/audio/audio-system.js` — Web Audio.
-11. `src/ui/elements.js` — DOM lookup.
-12. `src/ui/hud-model.js` — race ordering/progress/health presentation model.
-13. `src/ui/minimap.js` — minimap rendering.
-14. `src/game/runtime.js` — orchestration, Three.js object lifecycle, input и frame loop.
+3. `src/core/seeded-rng.js` — deterministic PRNG для replay/regression scenarios.
+4. `src/game/config.js` — gameplay constants.
+5. `src/game/race-state.js` — lap/final transitions.
+6. `src/game/track-environment.js` — track/environment и nearest-track lookup.
+7. `src/ai/difficulty.js` — profiles сложности.
+8. `src/ai/opponent-brain.js` — opponent frame simulation + attack planning с injected RNG/avoidance dependency.
+9. `src/weapons/geometry.js` — swept collision.
+10. `src/weapons/ballistics.js` — targeting и pure homing projectile step.
+11. `src/audio/audio-system.js` — Web Audio.
+12. `src/ui/elements.js` — DOM lookup.
+13. `src/ui/hud-model.js` — HUD model.
+14. `src/ui/minimap.js` — minimap rendering.
+15. `src/game/runtime.js` — Three.js object lifecycle, input, effects и frame orchestration.
 
-Browser modules публикуют узкие API через `globalThis.CyberRace`. Pure modules одновременно поддерживают CommonJS export для Node contract tests.
+## Deterministic simulation boundary
 
-## Границы ответственности
+### Opponent frame
 
-### Track / environment
+`stepOpponentFrame(state, context, dt, rng)` получает plain-data state и dependencies. Runtime передаёт `Math.random` и callback для world-space avoidance; tests передают seeded RNG и deterministic predicate.
 
-`track-environment.js` владеет track points, Catmull-Rom samples, road/environment geometry и ближайшей точкой трассы. Runtime больше не содержит ground/road/environment construction.
+Функция владеет lane cadence, interpolation, bump damping, nitro timers, rubber-band speed и race progress. Runtime только применяет returned state к Three.js entity.
 
-### Opponent AI
+### Attack planning
 
-`opponent-brain.js` владеет математикой lane selection, rubber-band multiplier, speed modifiers, attack cone и predictive lead. Runtime оставляет side effects: бонусы, meshes, ammo и projectile spawning.
+`planOpponentAttack(options, rng)` принимает позиции/скорости, ammo и difficulty и возвращает `none | bullet | rocket`, aim vector и следующий cooldown. Projectile meshes/audio остаются side effects runtime.
 
-### Weapons / projectiles
+### Homing projectile
 
-`geometry.js` и `ballistics.js` отделяют collision/targeting/homing contracts от Three.js rendering/pools. Runtime всё ещё владеет projectile meshes и impact effects.
+`stepHomingProjectile(...)` вычисляет lead, turn blend, velocity, next position и stall detection без Three.js. Runtime отвечает за meshes, pools, impacts и damage application.
 
-### HUD / minimap
+## Replay fixtures
 
-`hud-model.js` вычисляет race order, progress и health bounds. `minimap.js` владеет canvas minimap. Runtime связывает модель с текущим player/opponent state.
+`tests/fixtures/cyber-replay.json` — versioned deterministic fixture. `tests/scenarios.mjs` replay-ит:
 
-### Race state
+- 180 opponent frames с seeded lane/nitro decisions;
+- серию opponent attack decisions;
+- 90 homing-rocket frames по движущейся цели.
 
-`race-state.js` определяет переход completed lap → next lap/final state и выдачу боекомплекта на каждом третьем круге.
+Проверяются final state и event counts с числовыми tolerances. Это regression proof последовательностей, а не только отдельных формул.
 
 ## Verification
 
-`tests/contracts.mjs` проверяет без браузера:
+CI выполняет:
 
-- nearest-track lookup и fallback;
-- AI rubber-band/lane/speed/lead math;
-- swept projectile collision;
-- rocket lock/homing/progress;
-- HUD ordering/progress;
-- lap/final state transitions.
+`syntax → structural validation → contract tests → deterministic replay scenarios → headless Chrome/WebGL boot → diff hygiene`.
 
-`scripts/validate-structure.mjs` фиксирует module order и запрещает возврат вынесенной subsystem logic в runtime.
-
-GitHub Actions выполняет syntax → structural validation → gameplay contract tests → headless Chrome/WebGL boot → diff hygiene.
-
-Headless boot подтверждает initialization до `data-cyber-boot="ready"`, но не доказывает интерактивное управление, звук, реальный GPU performance или полный баланс гонки.
+Headless boot подтверждает initialization до `data-cyber-boot="ready"`, но не доказывает реальный GPU performance, Web Audio, keyboard/mouse feel или gameplay balance.

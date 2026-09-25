@@ -47,5 +47,112 @@
     const angle=Number(spreadRadians)||0,cos=Math.cos(angle),sin=Math.sin(angle);
     return {x:aimX*cos-aimZ*sin,z:aimX*sin+aimZ*cos,leadTime,distance};
   }
-  return {chooseLaneTarget,rubberBandMultiplier,computeOpponentSpeed,avoidanceLaneTarget,opponentAttackGeometry,computeLeadShot2D};
+
+  function stepOpponentFrame(state,context,dt,rng=Math.random){
+    const step=Math.max(0,Number(dt)||0);
+    const roadHalf=Math.max(0,Number(context?.roadHalf)||0);
+    let laneChangeTimer=(Number(state?.laneChangeTimer)||0)-step;
+    let targetOffset=Number(state?.targetOffset)||0;
+    let laneChanged=false;
+    if(laneChangeTimer<=0){
+      laneChangeTimer=2.2+rng()*4.2;
+      targetOffset=chooseLaneTarget(rng(),roadHalf);
+      laneChanged=true;
+    }
+
+    const currentOffset=Number(state?.offset)||0;
+    const offset=currentOffset+(targetOffset-currentOffset)*(1-Math.exp(-0.75*step));
+    const bumpVelocity=(Number(state?.bumpVelocity)||0)*Math.exp(-5.5*step);
+    const bumpOffset=clamp(((Number(state?.bumpOffset)||0)+bumpVelocity*step)*Math.exp(-1.8*step),-5.5,5.5);
+
+    let nitroCharges=Math.max(0,Math.trunc(Number(state?.nitroCharges)||0));
+    let nitroTimer=Math.max(0,Number(state?.nitroTimer)||0);
+    let speedBoostTimer=Math.max(0,Number(state?.speedBoostTimer)||0);
+    let usedNitro=false;
+    if(nitroCharges>0&&rng()<0.9*step){
+      nitroCharges--;
+      nitroTimer=2.5;
+      usedNitro=true;
+    }
+
+    const nitroActive=nitroTimer>0;
+    const speedBoostActive=speedBoostTimer>0;
+    if(nitroActive)nitroTimer=Math.max(0,nitroTimer-step);
+    if(speedBoostActive)speedBoostTimer=Math.max(0,speedBoostTimer-step);
+
+    const lap=Math.max(1,Math.trunc(Number(state?.lap)||1));
+    const t=Math.max(0,Number(state?.t)||0);
+    const botProgress=(lap-1)+t;
+    let effSpeed=computeOpponentSpeed({
+      baseSpeed:Number(state?.baseSpeed)||0,
+      difficultySpeed:Number(context?.difficultySpeed)||1,
+      slowed:Number(state?.slowTimer)>0,
+      nitro:nitroActive,
+      speedBoost:speedBoostActive,
+      playerProgress:Number(context?.playerProgress)||0,
+      botProgress,
+      minRubberBand:Number(context?.minRubberBand)||0.88,
+      maxRubberBand:Number(context?.maxRubberBand)||1.12,
+      maxSpeed:Number(context?.maxSpeed)||0
+    });
+
+    const shouldAvoid=typeof context?.shouldAvoid==='function'
+      ? Boolean(context.shouldAvoid({offset,bumpOffset,targetOffset,effSpeed}))
+      : false;
+    if(shouldAvoid){
+      effSpeed*=0.82;
+      targetOffset=avoidanceLaneTarget(targetOffset,Number(state?.id)||0,roadHalf);
+    }
+    const maxSpeed=Math.max(0,Number(context?.maxSpeed)||0);
+    if(maxSpeed>0)effSpeed=Math.min(effSpeed,maxSpeed*1.48);
+
+    const totalLength=Math.max(1e-6,Number(context?.totalLength)||1);
+    let nextT=t+(effSpeed/totalLength)*step;
+    let nextLap=lap;
+    let wrapped=false;
+    let finished=false;
+    if(nextT>=1){
+      nextT%=1;
+      nextLap++;
+      wrapped=true;
+      if(nextLap>Math.max(1,Math.trunc(Number(context?.totalLaps)||1)))finished=true;
+    }
+
+    return {
+      laneChangeTimer,targetOffset,offset,bumpVelocity,bumpOffset,
+      nitroCharges,nitroTimer,speedBoostTimer,
+      t:nextT,lap:nextLap,effSpeed,
+      laneChanged,usedNitro,avoidance:shouldAvoid,wrapped,finished
+    };
+  }
+
+  function planOpponentAttack(options,rng=Math.random){
+    const attack=opponentAttackGeometry(options?.origin,options?.target,options?.forward);
+    const difficulty=options?.difficulty||{};
+    let kind='none',shotX=0,shotZ=0;
+    const canAttempt=
+      !options?.playerDestroyed&&
+      Number(options?.playerInvincible)<=0&&
+      attack.distance>0.001&&
+      attack.distance<Number(difficulty.attackRange||0)&&
+      attack.facing>Number(difficulty.minFacing||0)&&
+      Number(options?.projectileCount||0)<Number(options?.maxProjectiles||0);
+
+    if(canAttempt&&rng()<0.66){
+      const spread=(rng()-0.5)*Number(difficulty.aimSpread||0);
+      const shot=computeLeadShot2D({
+        origin:options.origin,target:options.target,targetVelocity:options.targetVelocity,
+        projectileSpeed:118,maxLead:0.34,spreadRadians:spread
+      });
+      shotX=shot.x;shotZ=shot.z;
+      if(Number(options?.rockets||0)>0&&attack.distance>28&&rng()<0.6)kind='rocket';
+      else if(Number(options?.gunAmmo||0)>0)kind='bullet';
+    }
+
+    const attackScale=Math.max(0.82,1-(Math.max(1,Number(options?.playerLap)||1)-1)*0.01);
+    const cooldown=(0.9+rng()*1.55)*attackScale*Number(difficulty.attackDelay||1);
+    return {kind,shotX,shotZ,distance:attack.distance,facing:attack.facing,cooldown};
+  }
+
+  return {chooseLaneTarget,rubberBandMultiplier,computeOpponentSpeed,avoidanceLaneTarget,opponentAttackGeometry,computeLeadShot2D,stepOpponentFrame,planOpponentAttack};
 });
