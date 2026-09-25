@@ -14,6 +14,7 @@
 - Добавлен versioned fixture `tests/fixtures/cyber-replay.json`.
 - `tests/scenarios.mjs` replay-ит 180 opponent frames, серию attack decisions и 90 homing-rocket frames.
 - GitHub Actions теперь выполняет deterministic replay scenarios до headless WebGL boot.
+- Syntax gate поймал оставшийся duplicate tail старого attack block после extraction; boundary исправлена до продолжения серии изменений.
 
 ### Совместимость
 

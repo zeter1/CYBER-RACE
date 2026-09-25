@@ -1442,37 +1442,6 @@
           o.attackCooldown=attackPlan.cooldown;
         }
       });
-            const shotX=shot.x,shotZ=shot.z;
-            if(o.rockets>0&&dist>28&&Math.random()<0.6){
-              o.rockets--;
-              const start=o.car.group.position.clone().add(new THREE.Vector3(shotX*3.5,1.4,shotZ*3.5));
-              const rocket=createRocketMesh(0xff4444,0xff0000,'opponent');
-              rocket.position.copy(start);
-              rocket.lookAt(start.clone().sub(new THREE.Vector3(shotX,0,shotZ)));
-              scene.add(rocket);
-              projectiles.push({
-                mesh:rocket, vel:new THREE.Vector3(shotX*CONFIG.BOT_ROCKET_SPEED,0,shotZ*CONFIG.BOT_ROCKET_SPEED),
-                life:CONFIG.BOT_ROCKET_LIFE, damage:30, owner:'opponent', ownerRef:o,
-                target:player, turnSpeed:4.2, isRocket:true, age:0, noProgress:0, trailTimer:0,
-                lastTargetDistance:player.pos.distanceTo(start)
-              });
-
-              particles.spawn(start,0xff6622,5,5,0.28,0.12,false,true);
-              audio.play('rocket');
-            } else if(o.gunAmmo>0){
-              o.gunAmmo--;
-              const start=o.car.group.position.clone().add(new THREE.Vector3(shotX*3,1.0,shotZ*3));
-              const bullet=createBulletMesh('opponent');
-              bullet.position.copy(start);bullet.lookAt(start.clone().add(new THREE.Vector3(shotX,0,shotZ)));scene.add(bullet);
-              projectiles.push({mesh:bullet,vel:new THREE.Vector3(shotX*108,0,shotZ*108),life:1.15,damage:9,owner:'opponent',ownerRef:o,isRocket:false,age:0,sharedResources:true,poolKey:'opponent'});
-              particles.spawn(start,0xff9955,2,2.5,0.12,0.08,false,true);
-              audio.play('shoot');
-            }
-          }
-          const attackScale=Math.max(0.82,1-(player.lap-1)*0.01);
-          o.attackCooldown=(0.9+Math.random()*1.55)*attackScale*difficulty().attackDelay;
-        }
-      });
     }
 
     function checkBonuses(){
