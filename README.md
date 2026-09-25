@@ -156,25 +156,33 @@ python -m http.server 8000
 
 ## Архитектура
 
-Первый modularization pass вынес большой inline runtime из `index.html` и зафиксировал subsystem boundaries:
+Deep Gameplay Decomposition разделяет browser runtime по реальным subsystem contracts:
 
 ```text
 index.html
 ├── src/core/
-│   ├── three-loader.js
-│   └── storage.js
 ├── src/game/
 │   ├── config.js
+│   ├── race-state.js
+│   ├── track-environment.js
 │   └── runtime.js
-├── src/ai/difficulty.js
-├── src/weapons/geometry.js
+├── src/ai/
+│   ├── difficulty.js
+│   └── opponent-brain.js
+├── src/weapons/
+│   ├── geometry.js
+│   └── ballistics.js
 ├── src/audio/audio-system.js
-├── src/ui/elements.js
+├── src/ui/
+│   ├── elements.js
+│   ├── hud-model.js
+│   └── minimap.js
+├── tests/contracts.mjs
 ├── scripts/validate-structure.mjs
 └── docs/ARCHITECTURE.md
 ```
 
-Подробная карта зависимостей и план дальнейшего безопасного разделения: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+Pure gameplay math имеет Node-compatible contract tests, а `src/game/runtime.js` остаётся orchestration/rendering boundary. Подробности: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
 
 ## Диагностика
 
@@ -193,7 +201,7 @@ index.html
 
 - Текущая версия ориентирована прежде всего на ПК с клавиатурой и мышью.
 - Three.js загружается через внешние CDN, поэтому полностью автономный офлайн-запуск требует локальной копии библиотеки.
-- Большая часть orchestration/gameplay loop пока остаётся в `src/game/runtime.js` и будет делиться дальше по subsystem boundaries.
+- Rendering object lifecycle, input и часть side-effect-heavy gameplay orchestration пока остаются в `src/game/runtime.js`; чистая track/AI/ballistics/HUD/state математика уже вынесена.
 - Полного browser end-to-end набора пока нет; интерактивный gameplay требует отдельной runtime-проверки.
 - CI проверяет структуру HTML, синтаксис встроенного JavaScript и статическую раздачу проекта, но не заменяет реальную WebGL/gameplay-проверку.
 
@@ -203,8 +211,9 @@ Workflow [`.github/workflows/validate.yml`](.github/workflows/validate.yml) за
 
 - синтаксис всех JavaScript-файлов;
 - архитектурную структуру и порядок подключения модулей;
-- отсутствие возврата большого inline runtime в `index.html`;
-- headless Chrome boot через локальный HTTP-сервер до маркера `data-cyber-boot="ready"`;
+- contract tests для track lookup, AI, collision/ballistics, HUD и lap state transitions;
+- отсутствие возврата вынесенной subsystem logic в runtime;
+- headless Chrome/WebGL boot через локальный HTTP-сервер до маркера `data-cyber-boot="ready"`;
 - diff hygiene через `git diff --check`.
 
 Проверка **не заявляет**, что полный WebGL/gameplay протестирован: GPU performance, Web Audio и интерактивное управление остаются отдельным runtime-уровнем.
