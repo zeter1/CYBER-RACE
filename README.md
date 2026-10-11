@@ -1,6 +1,6 @@
-# 🏎️ CYBER RACE: CAR WARS
-
 **Язык / Language:** **Русский** · [English](README_EN.md)
+
+# 🏎️ CYBER RACE: CAR WARS
 
 [![Validate](https://github.com/zeter1/CYBER-RACE/actions/workflows/validate.yml/badge.svg)](https://github.com/zeter1/CYBER-RACE/actions/workflows/validate.yml)
 
@@ -261,8 +261,6 @@ Workflow [`.github/workflows/validate.yml`](.github/workflows/validate.yml) за
 **CYBER RACE: CAR WARS** — экспериментальная браузерная боевая гонка с упором на скорость, оружие, AI-соперников и динамические визуальные эффекты.
 
 ## Контакты для связи с разработчиком
-
-**Язык / Language:** **Русский** · [English](README_EN.md#developer-contacts)
 
 - [zeter11@gmail.com](mailto:zeter11@gmail.com)
 - [https://t.me/zeter1](https://t.me/zeter1)

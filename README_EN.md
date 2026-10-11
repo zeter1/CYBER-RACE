@@ -1,6 +1,6 @@
-# CYBER RACE: CAR WARS
-
 **Язык / Language:** [Русский](README.md) · **English**
+
+# CYBER RACE: CAR WARS
 
 CYBER RACE is a browser-based 3D combat racing game built with Three.js/WebGL. Race against three AI opponents over 15 laps using a machine gun, homing missiles, nitro and a defensive pulse.
 
@@ -37,8 +37,6 @@ Automated checks and scenario contracts do not replace interactive WebGL gamepla
 Open https://github.com/zeter1/CYBER-RACE/issues for problems. Include browser/version, graphics settings, exact steps, expected and actual results, and a short console excerpt without secrets. Use [SECURITY.md](SECURITY.md) for vulnerability disclosure.
 
 ## Developer contacts
-
-**Язык / Language:** [Русский](README.md#контакты-для-связи-с-разработчиком) · **English**
 
 - [zeter11@gmail.com](mailto:zeter11@gmail.com)
 - [https://t.me/zeter1](https://t.me/zeter1)
