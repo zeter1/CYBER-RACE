@@ -1,0 +1,118 @@
+/* Mobile cockpit owns only coarse-pointer race layout. Desktop HUD stays in hud.css.
+   The controls remain ordinary buttons; runtime owns pointer capture and gameplay. */
+@media (pointer:coarse) {
+  :root {
+    --cockpit-button: 52px;
+    --cockpit-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --cockpit-safe-left: max(8px, env(safe-area-inset-left, 0px));
+    --cockpit-safe-right: max(8px, env(safe-area-inset-right, 0px));
+    /* Two rows of controls, plus padding and a clearance above them. */
+    --cockpit-rail-height: calc(2 * var(--cockpit-button) + 28px + var(--cockpit-safe-bottom));
+  }
+  #touch-controls {
+    padding: 8px var(--cockpit-safe-right) calc(8px + var(--cockpit-safe-bottom)) var(--cockpit-safe-left);
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  #touch-controls .touch-direction,
+  #touch-controls .touch-actions {
+    display: grid;
+    grid-template-columns: repeat(3, var(--cockpit-button));
+    grid-template-rows: repeat(2, var(--cockpit-button));
+    gap: 6px;
+  }
+  #touch-controls [data-touch] {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 3px;
+    border-radius: 12px;
+    border: 1px solid rgba(113,228,245,.77);
+    color: #ecfcff;
+    background: linear-gradient(155deg,rgba(23,51,76,.94),rgba(5,20,41,.96));
+    box-shadow: inset 0 1px rgba(255,255,255,.16), 0 3px 12px rgba(0,0,0,.38);
+    font: 850 11px/1.1 'Segoe UI',Arial,sans-serif;
+    letter-spacing: .15px;
+    text-shadow: 0 1px 2px #071320;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    transition: background-color .12s,filter .12s,border-color .12s;
+  }
+  #touch-controls [data-touch]:focus-visible { outline: 3px solid white; outline-offset: 2px; }
+  #touch-controls [data-touch='left'] { grid-column: 1; grid-row: 1; }
+  #touch-controls [data-touch='forward'] { grid-column: 2; grid-row: 1; }
+  #touch-controls [data-touch='right'] { grid-column: 3; grid-row: 1; }
+  #touch-controls [data-touch='drift'] { grid-column: 1; grid-row: 2; }
+  #touch-controls [data-touch='backward'] { grid-column: 2 / span 2; grid-row: 2; }
+  #touch-controls [data-touch='gun'] { grid-column: 1; grid-row: 1; }
+  #touch-controls [data-touch='rocket'] { grid-column: 2; grid-row: 1; }
+  #touch-controls [data-touch='pause'] { grid-column: 3; grid-row: 1; }
+  #touch-controls [data-touch='nitro'] { grid-column: 1; grid-row: 2; }
+  #touch-controls [data-touch='mirror'] { grid-column: 2; grid-row: 2; }
+  #touch-controls [data-touch='pulse'] { grid-column: 3; grid-row: 2; }
+  #touch-controls [data-touch='gun'],
+  #touch-controls [data-touch='rocket'] { border-color: #fa879a; background: linear-gradient(160deg,#593045,#241c34); }
+  #touch-controls [data-touch='nitro'] { border-color: #f5c866; color: #fff3cd; background: linear-gradient(145deg,#665124,#34251b); }
+  #touch-controls [data-touch='pulse'] { border-color: #8bf3d5; color: #b9fff0; background: linear-gradient(150deg,#18574d,#102e39); }
+  #touch-controls [data-touch='pause'] { border-color: #a7b6ce; background: linear-gradient(145deg,#3b4559,#1d293b); }
+  #touch-controls [data-touch][data-active='true'] {
+    background: linear-gradient(140deg,#149db5,#075873);
+    border-color: #e2ffff;
+    color: #fff;
+    box-shadow: 0 0 0 2px rgba(112,241,255,.24),0 0 16px rgba(57,233,255,.35);
+    filter: brightness(1.13);
+  }
+  /* Side cutouts affect the corner HUD as well as thumb controls. */
+  #vehicle-status { left: var(--cockpit-safe-left); }
+  #right-hud { right: var(--cockpit-safe-right); }
+  /* In portrait, instruments stack above the two thumb zones. */
+  #minimap-canvas { left: var(--cockpit-safe-left); bottom: var(--cockpit-rail-height); }
+  #speed-panel { right: var(--cockpit-safe-right); bottom: var(--cockpit-rail-height); }
+  #hud { bottom: calc(var(--cockpit-rail-height) + var(--hud-gauge) + 12px); }
+}
+@media (pointer:coarse) and (max-width:390px) {
+  :root { --cockpit-button: 44px; }
+  #touch-controls [data-touch] { font-size: 10px; border-radius: 10px; }
+}
+/* Put onboarding in the left information lane, not over the speed or lap gauges. */
+@media (pointer:coarse) and (orientation:portrait) {
+  #pilot-tutorial { left: var(--hud-edge); top: 260px; bottom: auto; }
+}
+/* On tall notched phones, shift the information lane below the top safe inset. */
+@media (pointer:coarse) and (orientation:portrait) and (min-height:720px) {
+  :root { --cockpit-top-shift: max(0px, calc(env(safe-area-inset-top, 0px) - var(--hud-edge))); }
+  #vehicle-status,#right-hud { top: max(var(--hud-edge), env(safe-area-inset-top, 0px)); }
+  #race-contract-hud,#sector-timing,#overtake-series { translate: 0 var(--cockpit-top-shift); }
+  #pilot-tutorial { top: calc(260px + var(--cockpit-top-shift)); }
+  #race-progress-container { top: max(18px, env(safe-area-inset-top, 0px)); }
+}
+@media (pointer:coarse) and (orientation:portrait) and (max-width:600px) and (max-height:700px) {
+  #pilot-tutorial-detail { display: none; }
+}
+@media (pointer:coarse) and (orientation:landscape) {
+  /* On short landscape screens, park map and speed dial between thumb banks.
+     The lap panel sits just above the controls instead of over the road center. */
+  #minimap-canvas { left: calc(var(--cockpit-safe-left) + 172px); bottom: calc(8px + var(--cockpit-safe-bottom)); }
+  #speed-panel { right: calc(var(--cockpit-safe-right) + 180px); bottom: calc(8px + var(--cockpit-safe-bottom)); }
+  #hud { bottom: calc(var(--cockpit-rail-height) + 8px); }
+  #sector-timing { top: calc(105px + env(safe-area-inset-top, 0px)); bottom: auto; left: 50%; transform: translateX(-50%); }
+  #pilot-tutorial {
+    left: 50%; right: auto; bottom: calc(10px + var(--cockpit-safe-bottom));
+    top: auto; width: min(140px, 22vw); transform: translateX(-50%);
+  }
+  #overtake-series {
+    left: 50%; right: auto; top: max(8px, env(safe-area-inset-top, 0px)); width: 200px;
+    transform: translateX(-50%);
+  }
+}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:430px) {
+  #hud { padding: 6px 3px; width: min(250px, 34vw); }
+  #hud .hud-value { font-size: 18px; }
+  #hud .hud-label { font-size: 8px; }
+}
+@media (pointer:coarse) and (prefers-reduced-motion:reduce) {
+  #touch-controls [data-touch] { transition: none; }
+}

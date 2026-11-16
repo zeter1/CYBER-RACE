@@ -2,12 +2,12 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>🔥 CYBER RACE: CAR WARS 🔥</title>
   <style>
     :root { --neon: #00f3ff; --neon2: #ff0055; --bg: #050510; }
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { background: var(--bg); overflow:hidden; font-family:'Segoe UI',Arial,sans-serif; user-select:none; height:100vh; width:100vw; color:#fff; }
+    body { background: var(--bg); overflow:hidden; font-family:'Segoe UI',Arial,sans-serif; user-select:none; height:100vh; height:100dvh; width:100vw; color:#fff; }
     body.game-running, body.game-running * { cursor:none !important; }
     body.low-health #damage-overlay { box-shadow:inset 0 0 110px 28px rgba(255,0,40,.32);animation:lowHealthPulse 1.05s ease-in-out infinite; }
     body.low-quality .hud-panel,body.low-quality .weapon-slot,body.low-quality #position-panel,body.low-quality #score-panel { backdrop-filter:none!important; }
@@ -16,71 +16,27 @@
     #gameCanvas { position:fixed; top:0; left:0; width:100%; height:100%; z-index:1; }
     #ui-layer { position:fixed; z-index:10; pointer-events:none; top:0; left:0; width:100%; height:100%; }
 
-    #hud { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); display:flex; gap:18px; align-items:flex-end; }
-    .hud-panel {
-      background:rgba(0,8,24,0.85); backdrop-filter:blur(16px); border:1px solid rgba(0,243,255,0.25);
-      border-radius:16px; padding:14px 20px; color:#fff; text-align:center; min-width:90px;
-      box-shadow:0 0 20px rgba(0,243,255,0.08), inset 0 0 20px rgba(0,243,255,0.03);
-    }
-    .hud-label { font-size:9px; letter-spacing:3px; color:var(--neon); margin-bottom:6px; text-transform:uppercase; text-shadow:0 0 6px var(--neon); font-weight:700; }
-    .hud-value { font-size:26px; font-weight:800; letter-spacing:1px; }
-    #speed-panel .hud-value { font-size:52px; background:linear-gradient(180deg, #00f3ff 0%, #0088ff 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; filter:drop-shadow(0 0 8px rgba(0,243,255,0.5)); }
-    #health-bar-container { position:absolute; top:22px; left:30px; width:260px; height:26px; background:rgba(0,0,0,0.6); border-radius:13px; overflow:hidden; border:1px solid rgba(255,30,30,0.5); box-shadow:0 0 15px rgba(255,0,0,0.2); }
-    #health-bar { height:100%; width:100%; background:linear-gradient(90deg, #ff0000, #ff4444); box-shadow:inset 0 0 10px rgba(255,100,100,0.5); transition:width 0.2s; }
-    #nitro-bar-container { position:absolute; top:56px; left:30px; width:200px; height:10px; background:rgba(0,0,0,0.5); border-radius:5px; overflow:hidden; border:1px solid rgba(0,255,100,0.3); }
-    #nitro-bar { height:100%; width:0%; background:linear-gradient(90deg, #00ff66, #00cc44); transition:width 0.2s; }
-    #health-text { position:absolute; top:24px; left:300px; z-index:21; font:800 15px/22px monospace; color:#ff7373; text-shadow:0 0 8px #ff0000; }
-    #status-panel { position:absolute; top:76px; left:30px; min-width:225px; padding:8px 12px; border-radius:10px; background:rgba(0,8,24,.72); border:1px solid rgba(0,243,255,.22); font:700 12px/1.45 monospace; color:#bcecff; }
-    #status-panel .good { color:#64ff9a; } #status-panel .bad { color:#ff6f88; }
-
-    /* Единая правая колонка HUD. Flex-раскладка учитывает реальную высоту
-       каждого блока, поэтому позиция, очки, оружие, FPS и качество больше
-       не наслаиваются друг на друга при масштабировании окна или шрифтов. */
-    #right-hud {
-      position:absolute; top:18px; right:25px; width:clamp(180px,16vw,220px);
-      display:flex; flex-direction:column; align-items:stretch; gap:10px;
-      pointer-events:none;
-    }
-    #right-hud > * { flex:0 0 auto; }
-    #weapon-panel { position:relative; inset:auto; display:flex; flex-direction:column; gap:10px; width:100%; }
-    .weapon-slot {
-      width:100%; min-width:0;
-      background:rgba(0,8,24,0.85); backdrop-filter:blur(12px); border-radius:14px; padding:10px 18px;
-      color:#fff; font-weight:700; font-size:16px; border:1px solid rgba(0,243,255,0.2);
-      display:flex; align-items:center; gap:12px; justify-content:space-between;
-      box-shadow:0 4px 15px rgba(0,0,0,0.4); transition:all 0.2s;
-    }
-    .weapon-slot > span:first-child { min-width:0; white-space:nowrap; }
-    .weapon-slot > span:last-child { flex:0 0 auto; min-width:2ch; text-align:right; }
-    .weapon-slot.active { border-color:var(--neon); box-shadow:0 0 15px rgba(0,243,255,0.3); transform:scale(1.03); }
-    #position-panel {
-      position:relative; inset:auto; width:100%;
-      background:rgba(0,8,24,0.85); backdrop-filter:blur(12px); border-radius:14px;
-      padding:12px 20px; border:1px solid rgba(255,200,0,0.3); text-align:center;
-    }
-    #position-panel .hud-value { font-size:32px; color:#ffcc00; text-shadow:0 0 10px rgba(255,200,0,0.5); }
-    #score-panel {
-      position:relative; inset:auto; width:100%;
-      background:rgba(0,8,24,0.85); backdrop-filter:blur(12px); border-radius:14px;
-      padding:8px 16px; border:1px solid rgba(0,243,255,0.2);
-      font-size:18px; font-weight:700; color:var(--neon); text-align:center;
-    }
-    #hud-performance {
-      display:flex; align-items:center; justify-content:space-between; gap:8px;
-      padding:0 3px; min-height:16px; font-family:monospace;
-    }
-
-    #message { position:absolute; top:45%; left:50%; transform:translate(-50%,-50%) scale(0); font-size:clamp(28px,5vw,56px); font-weight:900; color:#fff; text-shadow:0 0 50px var(--neon),0 0 100px var(--neon); transition:transform .4s cubic-bezier(.175,.885,.32,1.275); letter-spacing:4px; white-space:normal; width:min(92vw,1000px); text-align:center; pointer-events:none; z-index:20; }
+    #message { position:absolute; top:45%; left:50%; transform:translate(-50%,-50%) scale(0); font-size:clamp(16px,2.5vw,28px); font-weight:900; color:#fff; text-shadow:0 0 20px var(--neon),0 0 40px var(--neon); transition:transform .4s cubic-bezier(.175,.885,.32,1.275); letter-spacing:1.5px; white-space:normal; width:min(92vw,1000px); text-align:center; pointer-events:none; z-index:20; }
     #message.show { transform:translate(-50%,-50%) scale(1); }
-    #lock-indicator { position:absolute; left:50%; top:61%; transform:translateX(-50%); min-width:240px; text-align:center; padding:8px 14px; border-radius:10px; background:rgba(0,8,24,.62); border:1px solid rgba(0,243,255,.25); color:#9fefff; font:800 13px/1.2 monospace; letter-spacing:1px; opacity:.72; transition:.15s; }
-    #lock-indicator.locked { color:#ffdf55; border-color:#ffcc00; box-shadow:0 0 18px rgba(255,204,0,.25); opacity:1; }
-    #incoming-warning { position:absolute; top:18%; left:50%; transform:translateX(-50%) scale(.9); color:#ff315f; font-size:23px; font-weight:900; letter-spacing:2px; text-shadow:0 0 16px #ff003c; opacity:0; transition:.12s; }
+    #message.pickup-notice { top:auto;left:auto;right:calc(var(--hud-edge) + var(--hud-gauge) + 18px);bottom:calc(var(--hud-edge) + 20px);width:clamp(140px,12vw,220px);font-size:clamp(14px,1.6vw,22px);line-height:1.3;letter-spacing:1px;text-align:right;transform:translateY(8px) scale(0); }
+    #message.pickup-notice.show { transform:translateY(0) scale(1); }
+    @media (max-width:1100px) { #message.pickup-notice { right:var(--hud-edge);bottom:calc(var(--hud-edge) + var(--hud-gauge) + 18px);width:min(220px,60vw); } }
+    @media (max-width:620px) { #message.pickup-notice { bottom:calc(var(--hud-edge) + var(--hud-gauge) + 112px); } }
+    #lock-indicator { display:none; position:absolute; left:50%; top:61%; transform:translateX(-50%); min-width:240px; text-align:center; padding:8px 14px; border-radius:10px; background:rgba(0,8,24,.62); border:1px solid rgba(0,243,255,.25); color:#9fefff; font:800 13px/1.2 monospace; letter-spacing:1px; opacity:.72; transition:.15s; }
+    #lock-indicator.locked { display:block; color:#ffdf55; border-color:#ffcc00; box-shadow:0 0 18px rgba(255,204,0,.25); opacity:1; }
+    #incoming-warning { position:absolute; top:18%; left:50%; transform:translateX(-50%) scale(.9); width:max-content; max-width:320px; color:#ff315f; font-size:clamp(14px,1.45vw,18px); font-weight:900; line-height:1.25; letter-spacing:.6px; text-align:center; text-shadow:0 0 16px #ff003c; opacity:0; transition:.12s; }
+    #incoming-warning[data-defense="intercept"] { color:#ffbc69; text-shadow:0 0 12px #a64800; }
+    #incoming-warning[data-defense="precision"] { color:#fff091; text-shadow:0 0 12px #bd7f00; }
     #incoming-warning.show { opacity:1; transform:translateX(-50%) scale(1); animation: warningBlink .48s steps(2,end) infinite; }
     @keyframes warningBlink { 50%{opacity:.35} }
     #combo-display { position:absolute; top:26%; right:28px; color:#ffd84a; font-size:24px; font-weight:900; text-shadow:0 0 12px #ff9000; opacity:0; transform:scale(.8); transition:.2s; }
     #combo-display.show { opacity:1; transform:scale(1); }
-    #speed-vignette { position:fixed; inset:0; z-index:5; pointer-events:none; opacity:0; transition:opacity .12s; background:radial-gradient(ellipse at center, transparent 45%, rgba(0,210,255,.16) 100%); }
+    #speed-vignette { position:fixed; inset:0; z-index:5; pointer-events:none; opacity:0; background:radial-gradient(ellipse at 50% 40%, transparent 52%, rgba(0,210,255,.14) 100%); }
 
+    @media (prefers-reduced-motion: reduce) {
+      #speed-vignette { display:none; }
+      #incoming-warning.show,#wrong-way.show { animation:none!important; opacity:1; }
+    }
     #damage-overlay { position:fixed; inset:0; z-index:6; pointer-events:none; background:radial-gradient(circle, transparent 40%, rgba(255,0,0,0) 100%); transition:background 0.15s; }
 
     .screen { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(5,5,16,0.92); backdrop-filter:blur(10px); transition:opacity 0.28s,visibility 0s linear 0s; overflow:auto; padding:24px; visibility:visible; }
@@ -133,22 +89,6 @@
     #quality-indicator { position:static; min-width:0; font-size:11px; color:#90a4b6; opacity:.8; text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
     @media (max-width:768px) {
-      #hud { bottom:12px;gap:4px;width:calc(100% - 20px);justify-content:center; }
-      .hud-panel { padding:7px 6px;min-width:0;flex:1; }
-      .hud-value { font-size:18px; }
-      #speed-panel .hud-value { font-size:34px; }
-      #right-hud { top:82px; right:10px; width:min(174px,43vw); gap:6px; }
-      #position-panel { padding:8px 10px; border-radius:12px; }
-      #position-panel .hud-value { font-size:27px; }
-      #score-panel { padding:6px 10px; border-radius:12px; font-size:15px; }
-      #weapon-panel { gap:5px; }
-      .weapon-slot { font-size:13px; padding:7px 10px; border-radius:12px; }
-      #hud-performance { flex-direction:column; align-items:flex-end; gap:1px; padding-right:2px; }
-      #fps-counter { font-size:10px; }
-      #quality-indicator { max-width:100%; font-size:9px; }
-      #health-bar-container { width:150px; height:16px; top:15px; left:15px; }
-      #health-text { top:13px; left:172px; font-size:12px; }
-      #status-panel { top:40px; left:15px; min-width:170px; font-size:10px; }
       #lock-indicator { top:66%; min-width:190px; font-size:11px; }
       .screen h1 { font-size:40px; }
       #pause-menu h2 { font-size:32px; }
@@ -159,123 +99,376 @@
       #race-progress-container { top:72px; width:42vw; }
       #wrong-way { top:31%; font-size:20px; }
     }
-    @media (max-height:560px) {
-      #right-hud { gap:6px; transform:scale(.84); transform-origin:top right; }
-    }
   </style>
+  <link rel="stylesheet" href="assets/menu.css">
+  <link rel="stylesheet" href="assets/garage.css">
+  <link rel="stylesheet" href="assets/hud.css">
+  <link rel="stylesheet" href="assets/mobile-cockpit.css">
 </head>
 <body>
   <div id="gameCanvas"></div>
 
-  <div id="start-screen" class="screen">
-    <h1>🏎️ CYBER RACE</h1>
-    <p class="sub">Война машин. Ракеты. Скорость. Гонка на 15 кругов.</p>
-    <div id="record-info">Рекорд загружается…</div>
-    <div class="controls-grid">
-      <span>WASD / Стрелки</span><span>Управление</span>
-      <span>ЛКМ</span><span>Пулемёт</span>
-      <span>ПКМ</span><span>Ракета</span>
-      <span>Shift</span><span>Ручник / Дрифт</span>
-      <span>Пробел</span><span>Нитро</span>
-      <span>Q</span><span>Защитный импульс</span>
-      <span>R</span><span>Рестарт</span>
-      <span>F</span><span>Полный экран</span>
-      <span>T</span><span>Вернуть машину на трассу</span>
-      <span>M</span><span>Включить / выключить звук</span>
-      <span>Esc</span><span>Меню / Пауза</span>
+  <svg class="menu-icons" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="hud-repair" viewBox="0 0 24 24"><path d="m14 5 4 4m-3-6a6 6 0 0 0-7 7L2 17a3 3 0 0 0 4 4l7-7a6 6 0 0 0 8-7l-5 4-3-3 4-5Z"/></symbol>
+    <symbol id="hud-shield" viewBox="0 0 24 24"><path d="m12 2 9 4v6c0 5-9 10-9 10S3 17 3 12V6l9-4Zm0 4-5 2v4c0 2 5 6 5 6s5-4 5-6V8l-5-2Z"/></symbol>
+    <symbol id="hud-boost" viewBox="0 0 24 24"><path d="m3 3 8 9-8 9h6l8-9-8-9H3Zm12 0 8 9-8 9"/></symbol>
+    <symbol id="hud-rocket" viewBox="0 0 24 24"><path d="M9 16 3 21l2-7M9 16l6 3 1-7M8 16C7 8 14 3 22 2c-1 8-6 15-14 14ZM4 17l-2 5 5-2"/><circle cx="16" cy="8" r="2"/></symbol>
+    <symbol id="hud-ammo" viewBox="0 0 24 24"><path d="M3 21V8l2-6 2 6v13H3Zm7 0V8l2-6 2 6v13h-4Zm7 0V8l2-6 2 6v13h-4ZM3 16h4m3 0h4m3 0h4"/></symbol>
+    <symbol id="hud-nitro" viewBox="0 0 24 24"><path d="M10 2h6v4h-6zM9 6h8l3 4-5 12H3L7 9l2-3Z"/><path d="m13 10-5 5h5l-4 5"/></symbol>
+    <symbol id="hud-pulse" viewBox="0 0 24 24"><path d="M1 13h5l3-9 3 16 3-11 3 7 2-3h3"/></symbol>
+    <symbol id="hud-diamond" viewBox="0 0 24 24"><path d="m2 8 5-5h10l5 5-10 13L2 8Zm0 0h20M7 3l5 18 5-18"/></symbol>
+    <symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+    <symbol id="icon-wheel" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="m10 12-7-2m11 2 7-2m-9 4v7"/></symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="16" cy="17" r="3"/></symbol>
+    <symbol id="icon-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+    <symbol id="icon-flag" viewBox="0 0 24 24"><path d="M4 21V3h15l-3 5 3 5H4m5-10v10m5-10v10M4 8h13"/></symbol>
+    <symbol id="icon-mountain" viewBox="0 0 24 24"><path d="m2 20 8-13 4 7 3-4 5 10M7 12l3 2 2-3"/></symbol>
+    <symbol id="icon-sound" viewBox="0 0 24 24"><path d="m11 4-6 5H2v6h3l6 5V4m4 4c3 2 3 6 0 8m3-12c6 4 6 12 0 16"/></symbol>
+    <symbol id="icon-wave" viewBox="0 0 24 24"><path d="M2 9c4-8 6 8 10 0s6 8 10 0M2 17c4-8 6 8 10 0s6 8 10 0"/></symbol>
+  </svg>
+
+  <main id="start-screen" class="screen" aria-label="Главное меню">
+    <div class="start-shell">
+      <header class="menu-header">
+        <div class="menu-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>CYBER RACE <b>/</b> <em>CAR WARS</em></span></div>
+        <button type="button" id="fullscreen-start-btn" class="fullscreen-button"><svg aria-hidden="true"><use href="#icon-expand"/></svg><span data-fullscreen-label>Полный экран</span></button>
+      </header>
+
+      <section class="menu-hero" aria-labelledby="game-title">
+        <div class="hero-copy">
+          <h1 id="game-title"><span>CYBER</span><span>RACE</span><small>CAR WARS</small></h1>
+          <p class="sub">Скорость. Оружие. Победа.</p>
+          <p class="race-meta"><span data-race-laps>15 кругов</span> <span aria-hidden="true">·</span> <span data-race-opponents>6 соперников</span></p>
+          <fieldset class="single-race-selector">
+            <legend>ОДИНОЧНАЯ ГОНКА</legend>
+            <div class="single-race-options">
+              <label><input type="radio" name="single-race-mode" value="blitz"><span>Блиц <small>1 круг</small></span></label>
+              <label><input type="radio" name="single-race-mode" value="sprint"><span>Спринт <small>3 круга</small></span></label>
+              <label><input type="radio" name="single-race-mode" value="classic" checked><span>Классика <small>15 кругов</small></span></label>
+            </div>
+            <p class="single-race-rewards">За круг 300 кр. · За победу <span id="single-race-victory-credits">1500</span> кр.</p>
+          </fieldset>
+          <fieldset class="race-contract-selector">
+            <legend>КОНТРАКТ ГОНЩИКА <span>+200 КР. ПОСЛЕ ФИНИША</span></legend>
+            <div class="race-contract-options">
+              <label><input type="radio" name="race-contract" value="none" checked><span>Без контракта</span></label>
+              <label><input type="radio" name="race-contract" value="hunter"><span>Охотник <small>2 уничтожения</small></span></label>
+              <label><input type="radio" name="race-contract" value="collector"><span>Сборщик <small>3 полезных бонуса</small></span></label>
+              <label><input type="radio" name="race-contract" value="podium"><span>Подиум <small>Место в топ-3</small></span></label>
+            </div>
+          </fieldset>
+          <button type="button" class="btn start-race-button" id="start-btn" disabled aria-busy="true"><span data-start-label>ЗАГРУЗКА…</span><svg aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+          <button type="button" class="garage-button" id="garage-btn" disabled aria-haspopup="dialog" aria-controls="garage-dialog">ГАРАЖ <span id="garage-current">Универсал</span></button>
+          <p id="menu-status" class="menu-status" role="status">Подготовка трассы…</p>
+        </div>
+        <p class="track-caption"><svg aria-hidden="true"><use href="#icon-mountain"/></svg>НЕОНОВАЯ ДОЛИНА</p>
+      </section>
+
+      <section class="championship-panel menu-panel" aria-labelledby="championship-title">
+        <div class="championship-heading"><div><p class="championship-eyebrow">СЕЗОН / 01</p><h2 id="championship-title">ЧЕМПИОНАТ</h2></div><span class="championship-badge">3 ЭТАПА</span></div>
+        <p class="championship-intro">Три разных маршрута. Семь пилотов. Один кубок.</p>
+        <ol class="championship-stages"><li><b>01 / Неоновая долина</b><span>3 круга · знакомый маршрут</span></li><li><b>02 / Неоновый квартал</b><span>4 круга · городские повороты</span></li><li><b>03 / Стальной экспресс</b><span>5 кругов · скоростная промзона</span></li></ol>
+        <p class="championship-rules">Очки за места 1–7: 15 / 12 / 10 / 8 / 6 / 4 / 2. Между этапами доступен гараж. Прогресс сохраняется на границе этапов; незавершённый этап начинается заново.</p>
+        <div id="championship-summary" aria-live="polite"></div>
+        <div class="championship-actions"><button type="button" id="championship-continue" class="btn secondary" hidden disabled>ПРОДОЛЖИТЬ</button><button type="button" id="championship-new" class="btn secondary" disabled>НАЧАТЬ ЧЕМПИОНАТ</button></div>
+        <p id="championship-status" role="status" class="championship-status"></p>
+      </section>
+
+      <section id="record-info" class="menu-records" aria-labelledby="records-title">
+        <h2 id="records-title"><svg aria-hidden="true"><use href="#icon-flag"/></svg><span>ЛИЧНЫЕ РЕКОРДЫ <small id="record-class-label" style="display:block;font-size:12px;color:#b6cada;font-style:normal">Универсал</small></span></h2>
+        <dl><div><dt>ЛУЧШИЙ КРУГ</dt><dd data-record="bestLap">Пока нет</dd></div><div><dt>РЕКОРД ОЧКОВ</dt><dd data-record="highScore">0</dd></div><div><dt>ВРЕМЯ ГОНКИ</dt><dd data-record="bestTotal">Пока нет</dd></div></dl>
+        <p id="record-storage-note" role="status" hidden>⚠ Рекорды действуют только в этой вкладке: браузер не сохранил последний результат.</p>
+      </section>
+
+      <div class="menu-layout">
+        <section class="menu-panel controls-panel" aria-labelledby="controls-title">
+          <h2 id="controls-title"><svg aria-hidden="true"><use href="#icon-wheel"/></svg>УПРАВЛЕНИЕ<span class="heading-line" aria-hidden="true"></span></h2>
+          <div class="quick-controls">
+            <div><kbd>WASD / ↑↓←→</kbd><span>Движение</span></div><div><kbd>Shift</kbd><span>Дрифт</span></div>
+            <div><kbd>ЛКМ</kbd><span>Пулемёт</span></div><div><kbd>Пробел</kbd><span>Нитро</span></div>
+            <div><kbd>ПКМ</kbd><span>Ракета</span></div><div><kbd>Q</kbd><span>Защитный импульс</span></div>
+          </div>
+          <div class="utility-controls"><span><kbd>Esc</kbd>Пауза</span><span><kbd>R</kbd>Рестарт</span><span><kbd>T</kbd>На трассу</span><span><kbd>M</kbd>Звук</span><button type="button" id="controls-help-btn" aria-haspopup="dialog" aria-controls="controls-help">Все клавиши</button></div>
+        </section>
+
+        <section class="menu-panel race-settings" aria-labelledby="settings-title" data-settings-panel>
+          <h2 id="settings-title"><svg aria-hidden="true"><use href="#icon-settings"/></svg>ПАРАМЕТРЫ ЗАЕЗДА<span class="heading-line" aria-hidden="true"></span></h2>
+          <fieldset class="difficulty-setting"><legend>Сложность</legend><div class="difficulty-options">
+            <label><input type="radio" name="start-difficulty" data-setting="difficulty" value="easy"><span>Новичок</span></label>
+            <label><input type="radio" name="start-difficulty" data-setting="difficulty" value="normal" checked><span>Обычная</span></label>
+            <label><input type="radio" name="start-difficulty" data-setting="difficulty" value="hard"><span>Хардкор</span></label>
+          </div></fieldset>
+          <label class="menu-quality"><span>Графика</span><select data-setting="quality"><option value="auto">Автоматически</option><option value="high">Высокая</option><option value="low">Производительность</option></select></label>
+          <div class="menu-toggles">
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-sound"/></svg><span>Звук</span><input type="checkbox" role="switch" data-setting="sound"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-wave"/></svg><span>Тряска камеры</span><input type="checkbox" role="switch" data-setting="cameraShake"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-wheel"/></svg><span>Призрак круга</span><input type="checkbox" role="switch" data-setting="lapGhost" aria-label="Показывать призрак лучшего круга"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-wheel"/></svg><span>Штурман поворотов</span><input type="checkbox" role="switch" data-setting="cornerSpotter" aria-label="Показывать подсказки о поворотах"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch pilot-switch"><svg aria-hidden="true"><use href="#icon-flag"/></svg><span>Инструктаж пилота</span><input type="checkbox" role="switch" data-setting="tutorialEnabled" aria-label="Показывать обучение пилота"><span class="switch-track" aria-hidden="true"></span></label>
+          </div>
+          <button type="button" class="pilot-replay-button" data-pilot-replay>↻ Повторить инструктаж</button>
+        </section>
+      </div>
+      <section class="menu-about" aria-labelledby="start-about-title">
+        <h2 class="menu-footer" id="start-about-title"><span aria-hidden="true"></span>ОБ ИГРЕ<span aria-hidden="true"></span></h2>
+        <div class="menu-about-content">
+          <div class="menu-about-description">
+            <h3>CYBER RACE <span>/ CAR WARS</span></h3>
+            <p>Браузерная 3D-гонка с автомобильными боями. Пройдите <span data-race-laps>15 кругов</span> по Неоновой долине: обгоняйте соперников, используйте оружие, нитро и защитный импульс, подбирайте бонусы и боритесь за победу.</p>
+          </div>
+          <div class="menu-about-developer">
+            <p class="menu-about-label">РАЗРАБОТЧИК</p>
+            <h3>Дмитрий Колесниченко</h3>
+            <a class="developer-site" href="https://dkoles.com/" target="_blank" rel="noopener noreferrer">Сайт разработчика: dkoles.com <span aria-hidden="true">↗</span></a>
+            <nav class="menu-about-links" aria-label="Контакты разработчика">
+              <a href="https://t.me/zeter1" target="_blank" rel="noopener noreferrer">Telegram: @zeter1 <span aria-hidden="true">↗</span></a>
+              <a href="mailto:zeter11@gmail.com">zeter11@gmail.com</a>
+              <a href="https://dkoles.com/news/dmitrij_kolesnichenko_obo_mne/2026-07-30-21" target="_blank" rel="noopener noreferrer">Об авторе и все контакты <span aria-hidden="true">↗</span></a>
+            </nav>
+          </div>
+        </div>
+      </section>
+
+      <dialog id="controls-help" aria-labelledby="controls-help-title">
+        <div class="help-header"><h2 id="controls-help-title">Все клавиши</h2><button type="button" id="controls-help-close" autofocus aria-label="Закрыть справку">×</button></div>
+        <dl class="help-controls">
+          <div><dt><kbd>WASD / Стрелки</kbd></dt><dd>Управление машиной</dd></div>
+          <div><dt><kbd>ЛКМ</kbd></dt><dd>Пулемёт</dd></div><div><dt><kbd>ПКМ</kbd></dt><dd>Ракета</dd></div>
+          <div><dt><kbd>Shift</kbd></dt><dd>Ручник / Дрифт</dd></div><div><dt><kbd>Пробел</kbd></dt><dd>Нитро</dd></div>
+          <div><dt><kbd>Q</kbd></dt><dd>Защитный импульс</dd></div><div><dt><kbd>C</kbd></dt><dd>Посмотреть назад (удерживать)</dd></div><div><dt><kbd>R</kbd></dt><dd>Рестарт</dd></div>
+          <div><dt><kbd>F</kbd></dt><dd>Полный экран</dd></div><div><dt><kbd>T</kbd></dt><dd>Вернуть машину на трассу</dd></div>
+          <div><dt><kbd>M</kbd></dt><dd>Включить / выключить звук</dd></div><div><dt><kbd>Esc</kbd></dt><dd>Меню / Пауза</dd></div>
+        </dl>
+        <p>Нажмите Esc, чтобы закрыть справку.</p>
+      </dialog>
     </div>
-    <div class="settings-panel" data-settings-panel>
-      <label class="setting-row"><span>СЛОЖНОСТЬ</span><select data-setting="difficulty"><option value="easy">Новичок</option><option value="normal">Обычная</option><option value="hard">Хардкор</option></select></label>
-      <label class="setting-row"><span>ГРАФИКА</span><select data-setting="quality"><option value="auto">Автоматически</option><option value="high">Высокая</option><option value="low">Производительность</option></select></label>
-      <label class="setting-row"><span>ЗВУК</span><input type="checkbox" data-setting="sound"></label>
-      <label class="setting-row"><span>ТРЯСКА КАМЕРЫ</span><input type="checkbox" data-setting="cameraShake"></label>
-    </div>
-    <div class="pause-actions">
-      <button type="button" class="btn" id="start-btn">СТАРТ</button>
-      <button type="button" class="btn secondary" id="fullscreen-start-btn">⛶ ПОЛНЫЙ ЭКРАН</button>
-    </div>
-  </div>
+  </main>
+
+  <dialog id="garage-dialog" aria-labelledby="garage-title" aria-describedby="garage-note">
+    <div class="garage-viewport"><div class="garage-artboard">
+      <h2 id="garage-title" class="garage-sr">Гараж</h2>
+      <button type="button" class="garage-hotspot garage-close" id="garage-close" aria-label="Закрыть гараж"></button>
+      <strong id="garage-credits" class="garage-live garage-wallet" aria-label="Баланс">1200 кр.</strong>
+      <fieldset class="garage-roster"><legend class="garage-sr">Класс машины</legend><div id="garage-classes"></div></fieldset>
+      <h3 id="garage-model-name" class="garage-live garage-model-name">Универсал</h3><span id="garage-model-code" class="garage-live garage-model-code">GT / 01</span>
+      <div id="garage-preview" role="img" aria-label="Выбранная машина на подиуме"><canvas id="garage-car-art" aria-hidden="true"></canvas><p id="garage-art-status" role="status"></p></div>
+      <div class="garage-view-controls" role="group" aria-label="Ракурс машины"><button type="button" data-garage-view="front" aria-pressed="true">Спереди</button><button type="button" data-garage-view="side" aria-pressed="false">Сбоку</button><button type="button" data-garage-view="rear" aria-pressed="false">Сзади</button></div>
+      <fieldset class="garage-colors"><legend class="garage-sr">Цвет кузова</legend><div id="garage-paints"></div></fieldset><p id="garage-paint-name" class="garage-live"></p>
+      <section class="garage-specs" aria-label="Характеристики с тюнингом без нитро"><dl id="garage-stats"></dl></section><p id="garage-build-preview" class="garage-live"></p>
+      <section class="garage-shop" aria-label="Тюнинг выбранной машины"><div id="garage-upgrades"></div><p id="garage-purchase-status" role="status" aria-live="polite"></p><p id="garage-storage-note" role="status"></p></section>
+      <p id="garage-selection-status" class="garage-live" role="status" aria-live="polite">Выбор не изменён</p><p id="garage-note" class="garage-live">Класс и цвет - после «Применить выбор». Покупки сохраняются сразу.</p>
+      <button type="button" class="garage-hotspot garage-back" id="garage-cancel" aria-label="Назад без применения выбора"></button><button type="button" class="garage-hotspot garage-apply" id="garage-apply" aria-label="Применить выбор"></button>
+    </div></div>
+  </dialog>
 
   <div id="finish-screen" class="screen hidden">
     <h1 id="finish-title">🏆 ПОБЕДА!</h1>
     <div class="finish-stats" id="finish-stats"></div>
+    <div id="championship-results" class="championship-results" hidden></div>
     <div class="pause-actions">
       <button type="button" class="btn" id="finish-restart-btn">ЕЩЁ РАЗ</button>
       <button type="button" class="btn secondary danger" id="finish-menu-btn">⌂ В ГЛАВНОЕ МЕНЮ</button>
     </div>
   </div>
 
-  <div id="pause-menu">
-    <h2>⏸️ ПАУЗА</h2>
-    <div class="controls-grid">
-      <span>WASD / Стрелки</span><span>Управление</span>
-      <span>ЛКМ</span><span>Пулемёт</span>
-      <span>ПКМ</span><span>Ракета</span>
-      <span>Shift</span><span>Ручник / Дрифт</span>
-      <span>Пробел</span><span>Нитро</span>
-      <span>Q</span><span>Защитный импульс</span>
-      <span>R</span><span>Рестарт</span>
-      <span>F</span><span>Полный экран</span>
-      <span>T</span><span>Вернуть машину на трассу</span>
-      <span>M</span><span>Включить / выключить звук</span>
-      <span>Esc</span><span>Меню / Пауза</span>
+  <dialog id="restart-confirm" aria-labelledby="restart-confirm-title" aria-describedby="restart-confirm-note">
+    <h2 id="restart-confirm-title">НАЧАТЬ ГОНКУ ЗАНОВО?</h2>
+    <p id="restart-confirm-note">Текущий заезд и его незавершённый прогресс будут сброшены. Отмена сохранит гонку.</p>
+    <div class="restart-confirm-actions">
+      <button type="button" id="restart-confirm-cancel" autofocus>ПРОДОЛЖИТЬ ГОНКУ</button>
+      <button type="button" id="restart-confirm-accept">НАЧАТЬ ЗАНОВО</button>
     </div>
-    <div class="settings-panel" data-settings-panel>
-      <label class="setting-row"><span>СЛОЖНОСТЬ</span><select data-setting="difficulty"><option value="easy">Новичок</option><option value="normal">Обычная</option><option value="hard">Хардкор</option></select></label>
-      <label class="setting-row"><span>ГРАФИКА</span><select data-setting="quality"><option value="auto">Автоматически</option><option value="high">Высокая</option><option value="low">Производительность</option></select></label>
-      <label class="setting-row"><span>ЗВУК</span><input type="checkbox" data-setting="sound"></label>
-      <label class="setting-row"><span>ТРЯСКА КАМЕРЫ</span><input type="checkbox" data-setting="cameraShake"></label>
-    </div>
-    <div class="pause-actions">
-      <button type="button" class="btn" id="resume-btn">▶ ВЕРНУТЬСЯ В ИГРУ</button>
-      <button type="button" class="btn secondary" id="restart-btn">↻ НАЧАТЬ ЗАНОВО</button>
-      <button type="button" class="btn secondary" id="fullscreen-pause-btn">⛶ ПОЛНЫЙ ЭКРАН</button>
-      <button type="button" class="btn secondary danger" id="menu-btn">⌂ В ГЛАВНОЕ МЕНЮ</button>
+  </dialog>
+
+  <div id="pause-menu" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div class="pause-shell">
+      <header class="menu-header">
+        <div class="menu-brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>CYBER RACE <b>/</b> <em>CAR WARS</em></span></div>
+        <button type="button" id="fullscreen-pause-btn" class="fullscreen-button"><svg aria-hidden="true"><use href="#icon-expand"/></svg><span data-fullscreen-label>Полный экран</span></button>
+      </header>
+      <section class="pause-hero" aria-labelledby="pause-title">
+        <div class="pause-copy">
+          <p class="pause-eyebrow"><span aria-hidden="true">Ⅱ</span> ЗАЕЗД ПРИОСТАНОВЛЕН</p>
+          <h2 id="pause-title">ПАУЗА</h2>
+          <p class="pause-subtitle">Гонка продолжится с того же места.</p>
+          <button type="button" class="btn pause-resume" id="resume-btn"><span>ПРОДОЛЖИТЬ ГОНКУ</span><svg aria-hidden="true"><use href="#icon-arrow"/></svg></button>
+          <p id="pause-menu-status" class="pause-menu-status" role="status"></p>
+        </div>
+        <p class="track-caption"><svg aria-hidden="true"><use href="#icon-mountain"/></svg>НЕОНОВАЯ ДОЛИНА</p>
+      </section>
+      <div class="menu-layout">
+        <section class="menu-panel controls-panel" aria-labelledby="pause-controls-title">
+          <h2 id="pause-controls-title"><svg aria-hidden="true"><use href="#icon-wheel"/></svg>УПРАВЛЕНИЕ<span class="heading-line" aria-hidden="true"></span></h2>
+          <div class="quick-controls">
+            <div><kbd>WASD / ↑↓←→</kbd><span>Движение</span></div><div><kbd>Shift</kbd><span>Дрифт</span></div>
+            <div><kbd>ЛКМ</kbd><span>Пулемёт</span></div><div><kbd>Пробел</kbd><span>Нитро</span></div>
+            <div><kbd>ПКМ</kbd><span>Ракета</span></div><div><kbd>Q</kbd><span>Защитный импульс</span></div>
+          </div>
+          <div class="utility-controls"><span><kbd>Esc</kbd>Продолжить</span><span><kbd>R</kbd>Рестарт</span><span><kbd>T</kbd>На трассу</span><span><kbd>M</kbd>Звук</span><span><kbd>F</kbd>Полный экран</span></div>
+        </section>
+        <section class="menu-panel race-settings" aria-labelledby="pause-settings-title" data-settings-panel>
+          <h2 id="pause-settings-title"><svg aria-hidden="true"><use href="#icon-settings"/></svg>ПАРАМЕТРЫ ЗАЕЗДА<span class="heading-line" aria-hidden="true"></span></h2>
+          <label class="menu-quality pause-difficulty"><span>Сложность</span><select data-setting="difficulty"><option value="easy">Новичок</option><option value="normal">Обычная</option><option value="hard">Хардкор</option></select></label>
+          <label class="menu-quality"><span>Графика</span><select data-setting="quality"><option value="auto">Автоматически</option><option value="high">Высокая</option><option value="low">Производительность</option></select></label>
+          <div class="menu-toggles">
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-sound"/></svg><span>Звук</span><input type="checkbox" role="switch" data-setting="sound"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-wave"/></svg><span>Тряска камеры</span><input type="checkbox" role="switch" data-setting="cameraShake"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-wheel"/></svg><span>Призрак круга</span><input type="checkbox" role="switch" data-setting="lapGhost" aria-label="Показывать призрак лучшего круга"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch"><svg aria-hidden="true"><use href="#icon-wheel"/></svg><span>Штурман поворотов</span><input type="checkbox" role="switch" data-setting="cornerSpotter" aria-label="Показывать подсказки о поворотах"><span class="switch-track" aria-hidden="true"></span></label>
+            <label class="menu-switch pilot-switch"><svg aria-hidden="true"><use href="#icon-flag"/></svg><span>Инструктаж пилота</span><input type="checkbox" role="switch" data-setting="tutorialEnabled" aria-label="Показывать обучение пилота"><span class="switch-track" aria-hidden="true"></span></label>
+          </div>
+          <button type="button" class="pilot-replay-button" data-pilot-replay>↻ Повторить инструктаж</button>
+        </section>
+      </div>
+      <nav class="pause-secondary-actions" aria-label="Действия с заездом">
+        <button type="button" class="pause-aux-button" id="restart-btn"><span aria-hidden="true">↻</span>НАЧАТЬ ЗАНОВО</button>
+        <button type="button" class="pause-aux-button pause-exit" id="menu-btn"><span aria-hidden="true">⌂</span>В ГЛАВНОЕ МЕНЮ</button>
+      </nav>
+      <section class="menu-about" aria-labelledby="pause-about-title">
+        <h2 class="menu-footer" id="pause-about-title"><span aria-hidden="true"></span>ОБ ИГРЕ<span aria-hidden="true"></span></h2>
+        <div class="menu-about-content">
+          <div class="menu-about-description">
+            <h3>CYBER RACE <span>/ CAR WARS</span></h3>
+            <p>Браузерная 3D-гонка с автомобильными боями. Пройдите <span data-race-laps>15 кругов</span> по Неоновой долине: обгоняйте соперников, используйте оружие, нитро и защитный импульс, подбирайте бонусы и боритесь за победу.</p>
+          </div>
+          <div class="menu-about-developer">
+            <p class="menu-about-label">РАЗРАБОТЧИК</p>
+            <h3>Дмитрий Колесниченко</h3>
+            <a class="developer-site" href="https://dkoles.com/" target="_blank" rel="noopener noreferrer">Сайт разработчика: dkoles.com <span aria-hidden="true">↗</span></a>
+            <nav class="menu-about-links" aria-label="Контакты разработчика">
+              <a href="https://t.me/zeter1" target="_blank" rel="noopener noreferrer">Telegram: @zeter1 <span aria-hidden="true">↗</span></a>
+              <a href="mailto:zeter11@gmail.com">zeter11@gmail.com</a>
+              <a href="https://dkoles.com/news/dmitrij_kolesnichenko_obo_mne/2026-07-30-21" target="_blank" rel="noopener noreferrer">Об авторе и все контакты <span aria-hidden="true">↗</span></a>
+            </nav>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
   <div id="ui-layer">
-    <div id="health-bar-container"><div id="health-bar"></div></div>
-    <div id="health-text">100 HP</div>
-    <div id="nitro-bar-container"><div id="nitro-bar"></div></div>
-    <div id="status-panel"><span id="shield-status">ЩИТ: —</span><br><span id="effect-status">СОСТОЯНИЕ: НОРМА</span></div>
+    <section id="vehicle-status" class="telemetry-panel" aria-label="Состояние машины">
+      <div class="health-heading"><svg class="hud-icon" aria-hidden="true"><use href="#hud-repair"/></svg><span>ПРОЧНОСТЬ</span><strong id="health-text">100</strong><small>HP</small></div>
+      <div id="health-bar-container" role="progressbar" aria-label="Прочность" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div id="health-bar"></div></div>
+      <div id="status-panel">
+        <div class="effect-row shield-row"><svg class="hud-icon" aria-hidden="true"><use href="#hud-shield"/></svg><span>ЩИТ</span><div class="effect-track"><div id="shield-bar"></div></div><strong id="shield-status">—</strong></div>
+        <div class="effect-row" id="effect-row"><svg class="hud-icon" aria-hidden="true"><use href="#hud-boost"/></svg><span id="effect-name">СОСТОЯНИЕ</span><div class="effect-track" id="nitro-bar-container"><div id="nitro-bar"></div></div><strong id="effect-status">НОРМА</strong></div>
+      </div>
+    </section>
     <div id="message">🏁 КРУГ!</div>
     <div id="incoming-warning">⚠ РАКЕТА СЗАДИ</div>
     <div id="wrong-way">⛔ НЕВЕРНОЕ НАПРАВЛЕНИЕ</div>
     <div id="hit-marker"></div>
     <div id="race-progress-container"><div id="race-progress"></div></div>
+    <div id="lap-ghost-badge" role="status" aria-live="off" hidden>👻 ПРИЗРАК · <span id="lap-ghost-badge-time">--</span><span id="lap-ghost-pace"></span></div>
+    <section id="corner-spotter" class="telemetry-panel" aria-label="Штурман поворотов" aria-live="off" hidden>
+      <span class="corner-arrow" id="corner-arrow" aria-hidden="true">↱</span>
+      <div class="corner-copy"><span class="corner-eyebrow">ШТУРМАН · ВПЕРЕДИ</span><strong id="corner-title">ПОВОРОТ НАПРАВО</strong><span id="corner-distance">ЧЕРЕЗ 140 м</span></div>
+      <div class="corner-track" aria-hidden="true"><div id="corner-progress"></div></div>
+    </section>
     <div id="lock-indicator">🚀 ЦЕЛЬ НЕ ЗАХВАЧЕНА</div>
     <div id="combo-display">КОМБО ×2</div>
-    <div id="hud">
-      <div class="hud-panel" id="speed-panel"><div class="hud-label">Скорость</div><div class="hud-value speed" id="speed-val">0</div></div>
-      <div class="hud-panel"><div class="hud-label">Круг</div><div class="hud-value lap" id="lap-val">1</div></div>
-      <div class="hud-panel"><div class="hud-label">Лучшее</div><div class="hud-value time" id="best-time">--</div></div>
-      <div class="hud-panel"><div class="hud-label">Текущее</div><div class="hud-value time" id="curr-time">0.0</div></div>
-    </div>
-    <div id="right-hud">
-      <div id="position-panel"><div class="hud-label" style="color:#ffcc00;text-shadow:0 0 6px #ffcc00;">Позиция</div><div class="hud-value" id="pos-val">1/4</div></div>
-      <div id="score-panel">💎 <span id="score-val">0</span></div>
+    <section id="hud" class="telemetry-panel" aria-label="Круг и время">
+      <div class="hud-panel"><div class="hud-label">КРУГ</div><div class="hud-value" id="lap-val">01/15</div></div>
+      <div class="hud-panel"><div class="hud-label">ТЕКУЩЕЕ</div><div class="hud-value" id="curr-time">00:00.0</div></div>
+      <div class="hud-panel"><div class="hud-label">ЛУЧШЕЕ</div><div class="hud-value" id="best-time">--:--.-</div></div>
+    </section>
+    <section id="right-hud" class="telemetry-panel" aria-label="Позиция и вооружение">
+      <div class="race-heading"><div id="position-panel"><div class="hud-label">ПОЗИЦИЯ</div><div class="hud-value" id="pos-val">1/7</div></div><div id="score-panel"><svg class="hud-icon" aria-hidden="true"><use href="#hud-diamond"/></svg><span id="score-val">0</span></div></div>
+      <section id="drift-feedback" aria-label="Результат дрифта" aria-live="off" hidden>
+        <div class="drift-feedback-head"><span id="drift-label">УДЕРЖИВАЙ ДРИФТ</span><strong id="drift-points">+0</strong></div>
+        <div class="drift-feedback-track" aria-hidden="true"><div id="drift-progress"></div></div>
+      </section>
+      <div id="rival-gap" class="rival-gap" aria-label="Разрыв по дистанции трассы" aria-live="off"><span id="rival-gap-label">ОТ 2-ГО</span><strong id="rival-gap-value">—</strong><small id="rival-gap-trend">РАЗРЫВ СТАБИЛЕН</small></div>
       <div id="weapon-panel">
-        <div class="weapon-slot" id="slot-rocket"><span>🚀 Ракеты</span> <span id="rocket-count">4</span></div>
-        <div class="weapon-slot" id="slot-gun"><span>🔫 Патроны</span> <span id="gun-ammo">80</span></div>
-        <div class="weapon-slot" id="slot-nitro"><span>💨 Закись</span> <span id="nitro-charges">3</span></div>
-        <div class="weapon-slot active" id="slot-pulse"><span>🛡 Импульс</span> <span id="pulse-cooldown">ГОТОВ</span></div>
+        <div class="weapon-slot" id="slot-rocket"><svg class="hud-icon" aria-hidden="true"><use href="#hud-rocket"/></svg><span class="weapon-label">РАКЕТЫ</span><strong id="rocket-count">4</strong></div>
+        <div class="weapon-slot" id="slot-gun"><svg class="hud-icon" aria-hidden="true"><use href="#hud-ammo"/></svg><span class="weapon-label">ПАТРОНЫ</span><strong id="gun-ammo">80</strong></div>
+        <div class="weapon-slot" id="slot-nitro"><svg class="hud-icon" aria-hidden="true"><use href="#hud-nitro"/></svg><span class="weapon-label">ЗАКИСЬ</span><strong id="nitro-charges">3</strong></div>
+        <div class="weapon-slot" id="slot-pulse"><svg class="hud-icon" aria-hidden="true"><use href="#hud-pulse"/></svg><span class="weapon-label">ИМПУЛЬС</span><strong id="pulse-cooldown">ГОТОВ</strong></div>
       </div>
-      <div id="hud-performance">
-        <div id="fps-counter">FPS: 60</div>
-        <div id="quality-indicator">ГРАФИКА: AUTO</div>
-      </div>
-    </div>
+    </section>
+    <section id="sector-timing" class="telemetry-panel" aria-label="Время секторов" aria-live="off" hidden>
+      <span id="sector-current">СЕКТОР 1/3</span>
+      <strong id="sector-delta">ИДЁТ ЗАМЕР</strong>
+      <small id="sector-detail" role="status" aria-live="polite" aria-atomic="true"></small>
+    </section>
+    <section id="race-contract-hud" class="telemetry-panel" aria-label="Контракт гонщика" aria-live="off" hidden>
+      <div class="race-contract-head"><span>КОНТРАКТ</span><strong id="race-contract-title">—</strong></div>
+      <div id="race-contract-progress">0/3</div>
+      <div id="race-contract-notice" role="status" aria-live="polite" aria-atomic="true"></div>
+    </section>
+    <section id="pilot-tutorial" class="telemetry-panel" aria-label="Инструктаж пилота" aria-live="off" hidden>
+      <div class="pilot-tutorial-head"><span id="pilot-tutorial-heading">ИНСТРУКТАЖ</span><button id="pilot-tutorial-skip" type="button" aria-label="Пропустить инструктаж">Пропустить</button></div>
+      <strong id="pilot-tutorial-title"></strong>
+      <p id="pilot-tutorial-detail"></p>
+      <span class="pilot-tutorial-key" id="pilot-tutorial-key"></span>
+    </section>
+    <section id="overtake-series" class="telemetry-panel" aria-label="Серия чистых обгонов" aria-live="off" hidden>
+      <div class="overtake-head"><span>СЕРИЯ ОБГОНОВ</span><strong id="overtake-multiplier">×1</strong></div>
+      <div class="overtake-next"><span>СЛЕДУЮЩИЙ</span><strong id="overtake-next">+60 очков</strong><span id="overtake-time">12 с</span></div>
+      <div class="overtake-track" aria-hidden="true"><div id="overtake-bar"></div></div>
+      <div id="overtake-event" aria-live="polite" aria-atomic="true" hidden></div>
+    </section>
+    <div id="hud-performance"><div id="fps-counter">FPS: 60</div><div id="quality-indicator">ГРАФИКА: AUTO</div></div>
+    <section id="speed-panel" aria-label="Скорость, километры в час">
+      <svg id="speedometer" viewBox="0 0 320 320" aria-hidden="true">
+        <circle class="dial-face" cx="160" cy="160" r="153"/><circle class="dial-bezel" cx="160" cy="160" r="151"/>
+        <path class="dial-rail" d="M53.93 266.07 A150 150 0 1 1 266.07 266.07"/>
+        <path id="speedometer-arc" pathLength="100" d="M53.93 266.07 A150 150 0 1 1 266.07 266.07"/>
+        <g class="dial-ticks"><line x1="69.49" y1="250.51" x2="61.01" y2="258.99" class="major"/><text x="83.63" y="236.37">0</text><line x1="54.77" y1="242.96" x2="50.06" y2="246.67" class="minor"/><line x1="45.75" y1="230.01" x2="40.63" y2="233.15" class="minor"/><line x1="38.31" y1="216.10" x2="32.86" y2="218.61" class="minor"/><line x1="32.56" y1="201.41" x2="26.85" y2="203.26" class="minor"/><line x1="34.46" y1="184.97" x2="22.69" y2="187.31" class="major"/><text class="dial-intermediate" x="54.08" y="181.07">50</text><line x1="26.41" y1="170.51" x2="20.43" y2="170.98" class="minor"/><line x1="26.10" y1="154.74" x2="20.11" y2="154.50" class="minor"/><line x1="27.65" y1="139.04" x2="21.72" y2="138.10" class="minor"/><line x1="31.03" y1="123.63" x2="25.26" y2="122.00" class="minor"/><line x1="41.74" y1="111.02" x2="30.66" y2="106.42" class="major"/><text x="60.22" y="118.67">100</text><line x1="43.09" y1="94.52" x2="37.85" y2="91.59" class="minor"/><line x1="51.59" y1="81.24" x2="46.74" y2="77.71" class="minor"/><line x1="61.60" y1="69.04" x2="57.19" y2="64.97" class="minor"/><line x1="72.97" y1="58.11" x2="69.08" y2="53.54" class="minor"/><line x1="88.89" y1="53.57" x2="82.22" y2="43.59" class="major"/><text class="dial-intermediate" x="100.00" y="70.20">150</text><line x1="99.17" y1="40.61" x2="96.44" y2="35.26" class="minor"/><line x1="113.62" y1="34.28" x2="111.54" y2="28.65" class="minor"/><line x1="128.72" y1="29.70" x2="127.32" y2="23.87" class="minor"/><line x1="144.25" y1="26.93" x2="143.54" y2="20.97" class="minor"/><line x1="160.00" y1="32.00" x2="160.00" y2="20.00" class="major"/><text x="160.00" y="52.00">200</text><line x1="175.75" y1="26.93" x2="176.46" y2="20.97" class="minor"/><line x1="191.28" y1="29.70" x2="192.68" y2="23.87" class="minor"/><line x1="206.38" y1="34.28" x2="208.46" y2="28.65" class="minor"/><line x1="220.83" y1="40.61" x2="223.56" y2="35.26" class="minor"/><line x1="231.11" y1="53.57" x2="237.78" y2="43.59" class="major"/><text class="dial-intermediate" x="220.00" y="70.20">250</text><line x1="247.03" y1="58.11" x2="250.92" y2="53.54" class="minor"/><line x1="258.40" y1="69.04" x2="262.81" y2="64.97" class="minor"/><line x1="268.41" y1="81.24" x2="273.26" y2="77.71" class="minor"/><line x1="276.91" y1="94.52" x2="282.15" y2="91.59" class="minor"/><line x1="278.26" y1="111.02" x2="289.34" y2="106.42" class="major"/><text x="259.78" y="118.67">300</text><line x1="288.97" y1="123.63" x2="294.74" y2="122.00" class="minor"/><line x1="292.35" y1="139.04" x2="298.28" y2="138.10" class="minor"/><line x1="293.90" y1="154.74" x2="299.89" y2="154.50" class="minor"/><line x1="293.59" y1="170.51" x2="299.57" y2="170.98" class="minor"/><line x1="285.54" y1="184.97" x2="297.31" y2="187.31" class="major"/><text class="dial-intermediate" x="265.92" y="181.07">350</text><line x1="287.44" y1="201.41" x2="293.15" y2="203.26" class="minor"/><line x1="281.69" y1="216.10" x2="287.14" y2="218.61" class="minor"/><line x1="274.25" y1="230.01" x2="279.37" y2="233.15" class="minor"/><line x1="265.23" y1="242.96" x2="269.94" y2="246.67" class="minor"/><line x1="250.51" y1="250.51" x2="258.99" y2="258.99" class="major"/><text x="236.37" y="236.37">400</text></g>
+        <g id="speedometer-needle" style="transform:rotate(-135deg)"><path d="M156 172 158 32 162 32 164 172Z"/></g>
+        <circle class="needle-cap" cx="160" cy="160" r="11"/>
+      </svg>
+      <div class="speed-reading"><strong id="speed-val">0</strong><span>км/ч</span></div>
+    </section>
     <div id="esc-hint">ESC — МЕНЮ</div>
+    <div id="rearview-indicator" role="status" hidden>◀ ОБЗОР НАЗАД</div>
+  </div>
+  <div id="threat-feedback" aria-hidden="true">
+    <div class="threat-edge" data-threat-direction="front" data-signal="off"><span>▲</span><strong>УГРОЗА</strong></div>
+    <div class="threat-edge" data-threat-direction="rear" data-signal="off"><span>▼</span><strong>УГРОЗА</strong></div>
+    <div class="threat-edge" data-threat-direction="left" data-signal="off"><span>◀</span><strong>УГРОЗА</strong></div>
+    <div class="threat-edge" data-threat-direction="right" data-signal="off"><span>▶</span><strong>УГРОЗА</strong></div>
   </div>
   <div id="damage-overlay"></div>
-  <div id="speed-vignette"></div>
+  <div id="speed-vignette" aria-hidden="true"></div>
+  <nav id="touch-controls" aria-label="Сенсорное управление">
+    <div class="touch-direction" aria-label="Движение">
+      <button type="button" data-touch="left" aria-label="Руль влево">◀</button>
+      <button type="button" data-touch="forward" aria-label="Газ">▲</button>
+      <button type="button" data-touch="backward" aria-label="Тормоз">▼</button>
+      <button type="button" data-touch="right" aria-label="Руль вправо">▶</button>
+      <button type="button" data-touch="drift" aria-label="Ручник и дрифт">ДРИФТ</button>
+    </div>
+    <div class="touch-actions">
+      <button type="button" data-touch="gun" aria-label="Пулемёт">ПУЛИ</button>
+      <button type="button" data-touch="rocket" aria-label="Ракета">РАКЕТА</button>
+      <button type="button" data-touch="nitro" aria-label="Нитро">НИТРО</button>
+      <button type="button" data-touch="mirror" aria-label="Посмотреть назад, удерживать">ОБЗОР</button>
+      <button type="button" data-touch="pulse" aria-label="Импульс">ЩИТ</button>
+      <button type="button" data-touch="pause" aria-label="Пауза">II</button>
+    </div>
+  </nav>
 
   <script src="src/core/three-loader.js"></script>
 <script src="src/core/storage.js"></script>
 <script src="src/core/seeded-rng.js"></script>
 <script src="src/game/config.js"></script>
+<script src="src/game/garage-profile.js"></script>
 <script src="src/game/race-state.js"></script>
+<script src="src/game/sector-timing.js"></script>
+  <script src="src/game/lap-ghost.js"></script>
+<script src="src/game/overtake-events.js"></script>
+<script src="src/game/pickup-rules.js"></script>
+<script src="src/game/race-contracts.js"></script>
+<script src="src/game/championship.js"></script>
+<script src="src/game/stage-checkpoint.js"></script>
+<script src="src/game/control-input.js"></script>
+<script src="src/game/pilot-tutorial.js"></script>
+<script src="src/game/player-driving.js"></script>
+<script src="src/game/drift-mastery.js"></script>
+<script src="src/game/slipstream.js"></script>
+<script src="src/game/corner-spotter.js"></script>
 <script src="src/game/track-environment.js"></script>
 <script src="src/ai/difficulty.js"></script>
 <script src="src/ai/opponent-brain.js"></script>
@@ -284,7 +477,16 @@
 <script src="src/audio/audio-system.js"></script>
 <script src="src/ui/elements.js"></script>
 <script src="src/ui/hud-model.js"></script>
+<script src="src/ui/threat-feedback.js"></script>
 <script src="src/ui/minimap.js"></script>
+<script src="src/game/model-geometry.js"></script>
+<script src="src/game/car-model.js"></script>
+<script src="src/game/pickup-model.js"></script>
+<script src="src/game/combat-effects.js"></script>
+<script src="src/game/speed-feedback.js"></script>
+<script src="src/game/defense-pulse.js"></script>
+<script src="src/game/frame-quality.js"></script>
+<script src="src/ui/garage.js"></script>
 <script src="src/game/runtime.js"></script>
 </body>
 </html>

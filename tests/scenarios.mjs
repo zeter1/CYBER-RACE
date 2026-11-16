@@ -98,4 +98,19 @@ const close=(actual,expected,tolerance=1e-6,message='')=>{
   close(minDistance,spec.expected.minDistance,1e-6,'rocket min distance');
 }
 
+// A homing rocket can lose the target across its nose (or be fired while the
+// target passes behind). Opposite unit directions must never cancel thrust.
+for(const fps of [15,30,60,144]){
+  const state={
+    position:{x:0,y:1,z:0},velocity:{x:30,y:0,z:0},
+    targetPosition:{x:-40,y:1,z:0},targetVelocity:{x:0,y:0,z:0},
+    turnSpeed:7.5,dt:1/fps,lastTargetDistance:40,noProgress:0,maxLead:0.55
+  };
+  const first=ballistics.stepHomingProjectile(state);
+  close(Math.hypot(first.velocity.x,first.velocity.y,first.velocity.z),30,1e-9,`antiparallel rocket speed at ${fps} FPS`);
+  assert.ok(Math.abs(first.velocity.z)>1e-8,`rocket must start turning toward a target directly behind at ${fps} FPS`);
+  const second=ballistics.stepHomingProjectile({...state,position:first.position,velocity:first.velocity,lastTargetDistance:first.distance,noProgress:first.noProgress});
+  close(Math.hypot(second.velocity.x,second.velocity.y,second.velocity.z),30,1e-9,`second-frame rocket speed at ${fps} FPS`);
+}
+
 console.log('CYBER RACE deterministic replay scenarios passed.');

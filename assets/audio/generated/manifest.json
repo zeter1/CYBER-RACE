@@ -1,0 +1,77 @@
+{
+  "generator": "scripts/build-audio.cjs",
+  "jsfxrSourceSha256": "6095a6358e654bc3ffd55d9ccecf694f187953d78b1391ee2823a6fcb92551c5",
+  "sampleRate": 44100,
+  "files": [
+    {
+      "file": "shoot.wav",
+      "duration": 0.18,
+      "bytes": 15920,
+      "sha256": "5c51e2032ee4ab99a07d2481a0b4cdd676de703803b6660b796e4c71d6406d66",
+      "loop": false
+    },
+    {
+      "file": "shoot-alt.wav",
+      "duration": 0.18,
+      "bytes": 15920,
+      "sha256": "4822d92a55c71b49d4845ddc2ab1959afb6db1505c0ca3dee618d9896ed210d1",
+      "loop": false
+    },
+    {
+      "file": "rocket.wav",
+      "duration": 0.8,
+      "bytes": 70604,
+      "sha256": "4e610f14b09a9813c9a85afe4ab3c053cc67aabe2e4eee6080732b75f0c6fe51",
+      "loop": false
+    },
+    {
+      "file": "explosion.wav",
+      "duration": 1.6,
+      "bytes": 141164,
+      "sha256": "5f67e26640a8b44b96f5a223dd1ae9dd00d5aef851007fe33e155e6de316a375",
+      "loop": false
+    },
+    {
+      "file": "hit.wav",
+      "duration": 0.28,
+      "bytes": 24740,
+      "sha256": "9f3add54d60d9714bfdb85065fa79cf81609c3373de679aeee4b01468aae5f50",
+      "loop": false
+    },
+    {
+      "file": "nitro.wav",
+      "duration": 0.8,
+      "bytes": 70604,
+      "sha256": "27b5b4e6beddd7de965f2a8ba3b2dbf6b1a55b632a2d716da3e2cd4ae227001c",
+      "loop": false
+    },
+    {
+      "file": "bonus.wav",
+      "duration": 0.46,
+      "bytes": 40616,
+      "sha256": "95c6a278e8d43537f5ced21885d775870efe88fb58790d1348df4baac56d47a8",
+      "loop": false
+    },
+    {
+      "file": "shield.wav",
+      "duration": 0.6,
+      "bytes": 52964,
+      "sha256": "1f0d7a4f9f972fef9957aa9495d528987e35e825888020cdf58d44eac55411a4",
+      "loop": false
+    },
+    {
+      "file": "engine-loop.wav",
+      "duration": 2,
+      "bytes": 176444,
+      "sha256": "35cc796447554009768ec9904d6d556f82a8fd544964c146ff4523d69489c0c5",
+      "loop": true
+    },
+    {
+      "file": "skid-loop.wav",
+      "duration": 2,
+      "bytes": 176444,
+      "sha256": "93079321e3ffe52b4d7a256daac9f13f679f998df59434088af47863c6ee712d",
+      "loop": true
+    }
+  ]
+}

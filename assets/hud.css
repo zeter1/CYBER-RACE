@@ -1,0 +1,440 @@
+/* In-race telemetry. Keep menu styling and gameplay state in their owners. */
+#lap-ghost-badge { position:absolute;top:34px;left:50%;transform:translateX(-50%);
+  padding:4px 10px;border:1px solid rgba(88,224,255,.48);border-radius:5px;
+  background:rgba(6,22,39,.8);color:#ccf7ff;text-shadow:0 1px 2px #061626;
+  font:800 11px/1.25 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:.4px;
+  white-space:nowrap;pointer-events:none; }
+#lap-ghost-badge[hidden] { display:none; }
+#lap-ghost-pace[data-pace="ahead"] { color:#83ffc5; }
+#lap-ghost-pace[data-pace="behind"] { color:#ffd48a; }
+@media (max-width:900px) { #lap-ghost-pace { display:none; } }
+@media (max-width:600px), (max-height:560px) { #lap-ghost-badge { display:none; } }
+
+:root { --hud-edge:clamp(12px,1.6vw,30px); --hud-gauge:clamp(180px,18vw,280px); --hud-map:clamp(140px,12vw,190px); --race-yellow:#f5e633; --hud-cyan:#56dff2; --hud-line:rgba(211,225,237,.3); --hud-muted:#b7c3ce; }
+.telemetry-panel { background:linear-gradient(135deg,rgba(35,39,47,.96),rgba(12,16,23,.94)); border:1px solid var(--hud-line); clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0 calc(100% - 14px),0 14px); font-family:Bahnschrift,'Arial Narrow','Segoe UI',sans-serif; font-variant-numeric:tabular-nums; }
+.hud-icon { width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0; }
+.hud-label { font-size:12px;letter-spacing:.6px;font-weight:700;color:var(--hud-muted);margin-bottom:6px; }
+.hud-value { font-size:32px;line-height:1.05;font-weight:800;color:#f6f9fc;font-variant-numeric:tabular-nums; }
+#vehicle-status { position:absolute;top:var(--hud-edge);left:var(--hud-edge);width:310px;padding:16px 18px 13px; }
+.health-heading { display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700; }
+.health-heading strong { margin-left:auto;font-size:30px;line-height:1; }
+.health-heading small { font-size:14px; }
+#health-bar-container { height:10px;margin:12px 0 13px;background:#454953;overflow:hidden;transform:skewX(-20deg); }
+#health-bar { height:100%;background:#eef5f9;width:100%;transition:width .18s linear,background-color .18s; }
+#status-panel { border-top:1px solid var(--hud-line);padding-top:4px; }
+.effect-row { display:grid;grid-template-columns:24px minmax(82px,1fr) minmax(30px,64px) auto;align-items:center;gap:8px;min-height:33px;font-size:12px;font-weight:700; }
+.effect-row .hud-icon { width:24px;height:24px;color:var(--race-yellow); }
+.shield-row .hud-icon { color:var(--hud-cyan); }
+.effect-row strong { min-width:48px;text-align:right;white-space:nowrap;font-size:13px; }
+.effect-track { height:6px;background:#454953;border-radius:2px;overflow:hidden; }
+.effect-track>div { height:100%;width:0;transition:width .08s linear;background:var(--race-yellow); }
+#shield-bar { background:var(--hud-cyan); }
+.effect-row.inactive { color:var(--hud-muted); }
+.effect-row.inactive .hud-icon { opacity:.45; }
+.effect-row.bad { color:#ff7684; }
+body.low-health #vehicle-status { border-color:#ff5265; }
+body.low-health #health-bar { background:#ff5265; }
+body.low-health #health-text { color:#ff7684; }
+#right-hud { position:absolute;top:var(--hud-edge);right:var(--hud-edge);width:300px;padding:14px 16px 10px; }
+.race-heading { display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--hud-line);padding-bottom:11px;margin-bottom:2px; }
+#position-panel { padding-left:5px; }
+#position-panel .hud-label { color:#eef5f9; }
+#pos-val { color:var(--race-yellow);font-size:44px;letter-spacing:1px; }
+#score-panel { display:flex;align-items:center;gap:9px;min-width:76px;max-width:50%;padding-left:16px;border-left:1px solid var(--hud-line);font-size:24px;font-weight:750;overflow-wrap:anywhere; }
+#score-panel .hud-icon { width:25px;height:25px; }
+/* Banked drift feedback stays inside the right HUD, never over the road. */
+#drift-feedback { padding:8px 5px 9px;border-bottom:1px solid var(--hud-line);pointer-events:none; }
+#drift-feedback[hidden] { display:none; }
+.drift-feedback-head { display:flex;justify-content:space-between;align-items:center;gap:7px;
+  font:800 11px/1.2 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:.3px;color:#e6edef; }
+#drift-label { min-width:0;overflow-wrap:anywhere; }
+#drift-points { color:var(--race-yellow);white-space:nowrap;font-size:18px;font-variant-numeric:tabular-nums; }
+.drift-feedback-track { margin-top:6px;height:4px;background:#414a54;border-radius:2px;overflow:hidden; }
+#drift-progress { height:100%;width:100%;background:var(--race-yellow);transform:scaleX(0);transform-origin:left center;transition:transform .08s linear; }
+#drift-feedback[data-active="false"] #drift-label { color:#bfe9f4; }
+#drift-feedback[data-active="false"] #drift-progress { opacity:.35; }
+.rival-gap { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:3px 8px;
+  min-height:51px;padding:8px 5px;border-bottom:1px solid var(--hud-line);font-variant-numeric:tabular-nums; }
+#rival-gap-label { min-width:0;color:#d2e7f0;font-size:11px;font-weight:800;white-space:nowrap; }
+#rival-gap-value { color:var(--hud-cyan);font-size:19px;font-weight:800;white-space:nowrap; }
+#rival-gap-trend { grid-column:1/-1;color:#b7c3ce;font-size:10px;font-weight:750;letter-spacing:.3px; }
+.rival-gap[hidden] { display:none; }
+.rival-gap { position:relative; }
+.rival-gap::after { content:'';position:absolute;bottom:1px;left:3px;right:3px;height:2px;
+  background:#66edf5;transform:scaleX(var(--draft-progress,0));transform-origin:left center;opacity:0;pointer-events:none; }
+#rival-gap[data-drafting="true"]::after { opacity:1; }
+#rival-gap[data-drafting="true"] #rival-gap-trend { display:block;color:#80f0fb; }
+#rival-gap[data-trend="closing"] #rival-gap-trend { color:#8dffd5; }
+#rival-gap[data-trend="opening"] #rival-gap-trend { color:#ffca75; }
+#weapon-panel { display:grid;grid-template-columns:1fr 1fr; }
+.weapon-slot { position:relative;display:grid;grid-template-columns:30px 1fr;grid-template-rows:auto auto;align-content:center;align-items:center;column-gap:10px;min-width:0;min-height:77px;padding:10px 6px;border-bottom:1px solid var(--hud-line); }
+.weapon-slot:nth-child(odd) { border-right:1px solid var(--hud-line); }
+.weapon-slot:nth-child(even) { padding-left:14px; }
+.weapon-slot:nth-child(n+3) { border-bottom:0; }
+.weapon-slot .hud-icon { grid-row:1/3;width:28px;height:28px; }
+.weapon-label { font-size:11px;font-weight:700;color:#d7e0e8; }
+.weapon-slot strong { font-size:26px;line-height:1.1;margin-top:4px;white-space:nowrap; }
+.weapon-slot.empty { color:#99a1ae; }
+.weapon-slot.empty .hud-icon { opacity:.45; }
+#slot-pulse strong { font-size:18px; }
+#slot-pulse.active { color:var(--hud-cyan); }
+#slot-pulse::after { content:'';position:absolute;bottom:2px;left:14px;width:calc(100% - 20px);height:2px;background:linear-gradient(to right,var(--hud-cyan) var(--cooldown,100%),#434955 0); }
+#slot-pulse[data-ready="true"] { animation:abilityReady .65s ease-out 1; }
+@keyframes abilityReady { 0%{background:rgba(86,223,242,.3)}100%{background:transparent} }
+#hud { position:absolute;bottom:var(--hud-edge);left:50%;transform:translateX(-50%);display:grid;grid-template-columns:1fr 1.3fr 1.3fr;width:480px;padding:15px 8px; }
+.hud-panel { min-width:0;padding:0 13px;text-align:center; }
+.hud-panel+.hud-panel { border-left:1px solid var(--hud-line); }
+#hud::before,#right-hud::before { content:'';position:absolute;top:0;left:0;width:28px;height:3px;background:var(--race-yellow);transform:rotate(-45deg);transform-origin:center; }
+#speed-panel { position:absolute;bottom:var(--hud-edge);right:var(--hud-edge);width:var(--hud-gauge);height:var(--hud-gauge);font-family:Bahnschrift,'Arial Narrow','Segoe UI',sans-serif; }
+#speedometer { display:block;width:100%;height:100%;overflow:visible; }
+.dial-face { fill:rgba(14,19,27,.93); }
+.dial-bezel { fill:none;stroke:#8596a5;stroke-width:1.5; }
+.dial-rail { fill:none;stroke:#414a54;stroke-width:4; }
+#speedometer-arc { fill:none;stroke:var(--race-yellow);stroke-width:4;stroke-dasharray:0 100;transition:stroke-dasharray .1s linear; }
+.dial-ticks line { stroke:#eaf0f7;stroke-width:1.4; }
+.dial-ticks .major { stroke-width:3; }
+.dial-ticks text { fill:#f6f9fc;font-size:17px;font-weight:700;text-anchor:middle;dominant-baseline:middle; }
+#speedometer-needle { transform-origin:160px 160px;transition:transform .1s linear; }
+#speedometer-needle path { fill:var(--race-yellow);stroke:#fff7a4;stroke-width:.5; }
+.needle-cap { fill:#242c36;stroke:#8596a5;stroke-width:1.5; }
+.speed-reading { position:absolute;top:64%;width:100%;text-align:center;display:flex;flex-direction:column;line-height:1; }
+.speed-reading strong { font-size:clamp(36px,3.4vw,56px);font-weight:850;font-style:italic;letter-spacing:-1px; }
+.speed-reading span { font-size:13px;margin-top:4px;font-weight:650;color:#cbd5df; }
+#minimap-canvas { position:fixed;left:var(--hud-edge);bottom:var(--hud-edge);width:var(--hud-map);height:var(--hud-map);z-index:10;border-radius:50%;border:1px solid #8596a5;background:rgba(14,19,27,.93);pointer-events:none; }
+/* Performance text occupies the narrow lane LEFT of the weapon HUD, not its live ammo/pulse cells. */
+#hud-performance { position:absolute;right:calc(var(--hud-edge) + 312px);top:calc(var(--hud-edge) + 268px);display:flex;gap:9px;max-width:300px;opacity:.78;white-space:nowrap;text-shadow:0 1px 3px #071320;pointer-events:none; }
+#fps-counter,#quality-indicator { font:10px/1.2 'Segoe UI',sans-serif;color:#c9d6e0; }
+#esc-hint { top:calc(var(--hud-edge) + 286px);right:calc(var(--hud-edge) + 312px);bottom:auto;font-size:10px;color:#c9d6e0;pointer-events:none; }
+#combo-display { top:37%; }
+/* Overtake feedback has its own lane: it never replaces race or combat warnings. */
+#overtake-series { position:absolute;top:calc(var(--hud-edge) + 318px);right:var(--hud-edge);width:300px;
+  padding:10px 14px 11px;border-color:rgba(245,230,51,.5);color:#f6f9fc;z-index:11; }
+#overtake-series[hidden],#overtake-event[hidden] { display:none; }
+.overtake-head { display:flex;align-items:baseline;justify-content:space-between;gap:7px;
+  color:#f5e633;font-size:11px;font-weight:800;letter-spacing:.6px; }
+#overtake-multiplier { font-size:25px;line-height:1; }
+.overtake-next { display:flex;align-items:baseline;gap:6px;margin:6px 0 7px;font-size:10px; }
+.overtake-next>span:first-child { color:#b7c3ce;font-size:10px;letter-spacing:.3px; }
+#overtake-next { margin-left:auto;white-space:nowrap;font-size:13px;color:#fff6b0; }
+#overtake-time { min-width:30px;text-align:right;white-space:nowrap;color:#d8e5ec;font-variant-numeric:tabular-nums; }
+.overtake-track { height:5px;overflow:hidden;border-radius:3px;background:#454953; }
+#overtake-bar { height:100%;width:0;background:#f5e633;transition:width .08s linear; }
+#overtake-event { margin-top:8px;padding-top:7px;border-top:1px solid rgba(245,230,51,.32);
+  font-size:11px;line-height:1.3;font-weight:850;color:#ffe285;overflow-wrap:break-word; }
+/* Compact HUD follows both available width and height. */
+@media (max-width:1200px), (max-height:700px) {
+  :root { --hud-edge:12px;--hud-gauge:170px;--hud-map:125px; }
+  #vehicle-status { width:240px;padding:11px; }
+  .health-heading { font-size:11px;gap:7px; }.health-heading strong { font-size:26px; }
+  .effect-row { grid-template-columns:20px minmax(65px,1fr) minmax(20px,36px) auto;gap:6px;min-height:27px;font-size:10px; }
+  .effect-row strong { min-width:38px;font-size:11px; }.effect-row .hud-icon { width:20px;height:20px; }
+  #right-hud { width:220px;padding:11px; }.race-heading { padding-bottom:9px; }
+  #pos-val { font-size:35px; }#position-panel .hud-label { font-size:10px;margin-bottom:4px; }
+  #score-panel { font-size:20px;min-width:60px;gap:6px;padding-left:10px; }
+  #drift-feedback { padding:5px 3px 6px; }
+  .drift-feedback-head { font-size:9px;letter-spacing:0; }
+  #drift-points { font-size:15px; }
+  .drift-feedback-track { margin-top:4px; }
+  .rival-gap { min-height:45px;padding:6px 3px;gap:2px 4px; }
+  #rival-gap-label { font-size:9px; }#rival-gap-value { font-size:15px; }#rival-gap-trend { font-size:8px; }
+  .weapon-slot { min-height:61px;grid-template-columns:23px 1fr;column-gap:7px;padding:8px 5px; }
+  .weapon-slot:nth-child(even) { padding-left:9px; }.weapon-slot .hud-icon { width:23px;height:23px; }
+  .weapon-label { font-size:9px; }.weapon-slot strong { font-size:23px; }#slot-pulse strong { font-size:15px; }
+  #slot-pulse::after { left:9px;width:calc(100% - 14px); }
+  #hud { width:340px;padding:12px 4px; }.hud-panel { padding:0 7px; }
+  #hud .hud-label { font-size:10px;margin-bottom:5px; }.hud-value { font-size:25px; }
+  .speed-reading strong { font-size:35px; }.speed-reading span { font-size:10px; }
+  .dial-ticks text { font-size:20px; }
+  #hud-performance { top:calc(var(--hud-edge) + 216px);right:calc(var(--hud-edge) + 232px);max-width:220px; }#fps-counter,#quality-indicator { font-size:8px; }
+  #esc-hint { top:calc(var(--hud-edge) + 232px);right:calc(var(--hud-edge) + 232px);font-size:8px; }
+  #overtake-series { top:calc(var(--hud-edge) + 262px);width:220px;padding:8px 10px; }
+  #overtake-multiplier { font-size:22px; }
+  #overtake-next { font-size:11px; }
+}
+@media (max-width:900px), (max-height:560px) {
+  :root { --hud-edge:10px;--hud-gauge:136px;--hud-map:104px; }
+  #vehicle-status { width:200px;padding:10px; }
+  .health-heading { gap:5px;font-size:10px; }.health-heading .hud-icon { width:19px;height:19px; }
+  .health-heading strong { font-size:24px; }.health-heading small { font-size:11px; }
+  #health-bar-container { height:7px;margin:8px 0; }
+  .effect-row { grid-template-columns:19px minmax(0,1fr) auto;min-height:24px;gap:5px; }
+  .effect-row .hud-icon { width:19px;height:19px; }.effect-track { display:none; }
+  #right-hud { width:200px;padding:10px; }#pos-val { font-size:30px; }
+  .weapon-slot { min-height:55px;padding:7px 4px;column-gap:6px;grid-template-columns:20px 1fr; }
+  .weapon-slot .hud-icon { width:20px;height:20px; }.weapon-slot strong { font-size:21px; }
+  #slot-pulse strong { font-size:14px; }
+  #hud { width:300px;padding:10px 3px; }#hud .hud-value { font-size:23px; }
+  .speed-reading strong { font-size:29px; }.speed-reading span { font-size:9px; }
+  .dial-ticks text { font-size:23px; }.dial-intermediate { display:none; }
+  #hud-performance { top:calc(var(--hud-edge) + 198px);right:calc(var(--hud-edge) + 212px);max-width:200px; }
+  #esc-hint { top:calc(var(--hud-edge) + 213px);right:calc(var(--hud-edge) + 212px); }
+  #overtake-series { top:calc(var(--hud-edge) + 240px);width:200px; }
+}
+@media (max-width:600px), (max-height:460px) {
+  :root { --hud-edge:8px;--hud-gauge:110px;--hud-map:86px; }
+  #vehicle-status,#right-hud { width:min(166px,calc(50% - 12px));padding:8px; }
+  .health-heading { gap:5px;font-size:9px; }.health-heading strong { font-size:22px; }
+  .health-heading small { font-size:9px; }.health-heading .hud-icon { width:16px;height:16px; }
+  #health-bar-container { height:6px;margin:7px 0; }
+  .effect-row { grid-template-columns:16px minmax(0,1fr) auto;gap:4px;min-height:21px;font-size:9px; }
+  .effect-row .hud-icon { width:16px;height:16px; }.effect-row strong { min-width:34px;font-size:10px; }
+  #position-panel { padding-left:2px; }#position-panel .hud-label { font-size:9px;margin-bottom:3px; }
+  #pos-val { font-size:26px; }.race-heading { padding-bottom:7px; }
+  .rival-gap { min-height:26px;padding:5px 2px; }
+  #rival-gap-label { font-size:8px; }#rival-gap-value { font-size:12px; }
+  #rival-gap-trend { display:none; }
+  #score-panel { min-width:42px;font-size:17px;gap:4px;padding-left:7px; }#score-panel .hud-icon { width:17px;height:17px; }
+  .weapon-slot,.weapon-slot:nth-child(even) { display:flex;justify-content:space-between;gap:4px;min-height:33px;padding:5px; }
+  .weapon-slot .hud-icon { width:18px;height:18px; }.weapon-slot strong { margin:0;font-size:19px; }
+  /* Preserve accessible names while icons + counts keep the playing field clear. */
+  .weapon-label { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap; }
+  #slot-pulse strong { font-size:11px; }#slot-pulse::after { left:5px;width:calc(100% - 10px); }
+  #hud { width:260px;padding:9px 3px; }#hud .hud-label { font-size:9px;margin-bottom:4px; }#hud .hud-value { font-size:20px; }
+  .speed-reading strong { font-size:25px; }.speed-reading span { font-size:8px; }
+  .dial-ticks text { font-size:25px; }.dial-ticks .minor { display:none; }
+  #hud-performance,#esc-hint { display:none; }
+  #overtake-series { top:calc(var(--hud-edge) + 211px);width:min(166px,calc(50% - 12px));padding:7px 8px; }
+  .overtake-head { font-size:8px;letter-spacing:0; }
+  #overtake-multiplier { font-size:19px; }
+  .overtake-next { flex-wrap:wrap;gap:2px 4px;margin:4px 0 5px; }
+  .overtake-next>span:first-child { font-size:8px; }
+  #overtake-next { font-size:11px; }
+  #overtake-time { font-size:9px; }
+  #overtake-event { font-size:9px; }
+}
+@media (max-width:600px) and (min-height:461px) {
+  #hud { bottom:calc(var(--hud-edge) + var(--hud-gauge) + 10px); }
+}
+@media (max-width:520px) {
+  #hud { bottom:calc(var(--hud-edge) + var(--hud-gauge) + 10px); }
+}
+@media (prefers-reduced-motion:reduce) {
+  #speedometer-needle,#speedometer-arc,#health-bar,.effect-track>div,#overtake-bar,#drift-progress { transition:none; }
+  #slot-pulse[data-ready="true"],body.low-health #damage-overlay { animation:none; }
+}
+
+/* Opt-in touch controls: visible only for coarse-pointer devices during a race. */
+#touch-controls { display:none; position:fixed; z-index:40; left:0; right:0; bottom:0;
+  justify-content:space-between; align-items:flex-end; gap:10px; padding:12px max(8px,env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-right));
+  pointer-events:none; }
+#touch-controls .touch-direction { display:grid; grid-template-columns:repeat(2,48px); gap:5px; }
+#touch-controls .touch-actions { display:grid; grid-template-columns:repeat(3,54px); gap:5px; }
+#touch-controls button { pointer-events:auto; touch-action:none; color:#ebffff;
+  border:1px solid rgba(95,226,255,.9); border-radius:10px; background:rgba(4,18,37,.78);
+  min-height:44px; padding:3px; font:800 11px/1.2 'Segoe UI',Arial,sans-serif; user-select:none; -webkit-user-select:none; }
+#touch-controls button[data-touch="pause"] { grid-column:3; grid-row:1; }
+#touch-controls button[data-active="true"] { background:rgba(0,156,198,.92); }
+@media (pointer:coarse) {
+  body.game-session-active:not(.menu-open) #touch-controls { display:flex; }
+}
+@media (max-width:390px) {
+  #touch-controls .touch-direction { grid-template-columns:repeat(2,42px); }
+  #touch-controls .touch-actions { grid-template-columns:repeat(3,47px); }
+  #touch-controls button { min-height:41px; font-size:10px; }
+}
+
+/* Contextual onboarding shares the left telemetry lane above the minimap.
+   The only interactive surface is Skip, so driving/aiming remain unblocked. */
+#pilot-tutorial { position:absolute;left:var(--hud-edge);bottom:calc(var(--hud-edge) + var(--hud-map) + 18px);
+  z-index:12;width:min(272px,calc(100vw - 24px));padding:11px 13px;border-color:rgba(86,223,242,.7);
+  color:#f4f9ff;background:linear-gradient(145deg,rgba(9,26,41,.95),rgba(8,15,29,.95));
+  box-shadow:0 4px 22px rgba(0,0,0,.35); }
+#pilot-tutorial[hidden] { display:none; }
+.pilot-tutorial-head { display:flex;justify-content:space-between;gap:8px;align-items:center;
+  color:#80eff9;font:800 10px/1.2 'Segoe UI',sans-serif;letter-spacing:.8px; }
+#pilot-tutorial-skip { pointer-events:auto;border:0;padding:3px 0;background:none;color:#d3e7ef;
+  text-decoration:underline;cursor:pointer;font:650 11px/1.3 'Segoe UI',sans-serif; }
+#pilot-tutorial-skip[hidden] { display:none; }
+#pilot-tutorial-skip:focus-visible { outline:2px solid #fff;outline-offset:3px; }
+#pilot-tutorial-title { display:block;margin-top:7px;font:850 17px/1.13 Bahnschrift,'Segoe UI',sans-serif; }
+#pilot-tutorial-detail { margin:5px 0 0;color:#d1e4ec;font:600 12px/1.35 'Segoe UI',sans-serif; }
+.pilot-tutorial-key { display:inline-block;margin-top:8px;padding:3px 8px;border:1px solid rgba(128,239,249,.7);
+  border-radius:4px;color:#80eff9;font:850 12px/1.2 Bahnschrift,'Segoe UI',sans-serif; }
+#pilot-tutorial[data-kind="threat"] { border-color:#ffb470; }
+#pilot-tutorial[data-kind="threat"] .pilot-tutorial-head,
+#pilot-tutorial[data-kind="threat"] .pilot-tutorial-key { color:#ffd294;border-color:#ffb470; }
+#pilot-tutorial[data-kind="complete"] { border-color:#a8e5b1; }
+#pilot-tutorial[data-kind="complete"] .pilot-tutorial-head,
+#pilot-tutorial[data-kind="complete"] .pilot-tutorial-key { color:#c1ffd0;border-color:#a8e5b1; }
+@media (max-width:600px), (max-height:460px) {
+  #pilot-tutorial { width:min(166px,calc(50% - 12px));padding:6px 8px;bottom:calc(var(--hud-edge) + var(--hud-map) + 12px); }
+  .pilot-tutorial-head { font-size:8px;letter-spacing:0; }
+  #pilot-tutorial-title { font-size:12px;margin-top:4px; }
+  #pilot-tutorial-detail { font-size:9px;line-height:1.2;margin-top:3px; }
+  #pilot-tutorial-skip { font-size:9px; }
+  .pilot-tutorial-key { font-size:9px;margin-top:5px;padding:2px 5px; }
+}
+@media (max-width:600px) and (min-height:561px) {
+  /* Small screens move the lap HUD above the speedometer. Stay above that HUD. */
+  #pilot-tutorial { bottom:calc(var(--hud-edge) + var(--hud-gauge) + 94px); }
+}
+@media (max-width:600px) and (max-height:560px) {
+  /* Very short landscape: compact central dock between the minimap and speed dial. */
+  #pilot-tutorial { left:calc(50% - 62px);width:124px;bottom:calc(var(--hud-edge) + 2px);
+    padding:5px 7px; }
+  #pilot-tutorial-detail { display:none; }
+  #pilot-tutorial-title { font-size:11px; }
+  .pilot-tutorial-head { flex-wrap:wrap;gap:2px; }
+  .pilot-tutorial-key { margin-top:3px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #pilot-tutorial,#pilot-tutorial * { animation:none!important;transition:none!important; }
+}
+
+/* Standalone race contract occupies the left telemetry lane below health. */
+#race-contract-hud { position:absolute;top:calc(var(--hud-edge) + 184px);left:var(--hud-edge);width:310px;z-index:11;padding:9px 13px;border-color:rgba(86,223,242,.55); }
+#race-contract-hud[hidden] { display:none; }
+.race-contract-head { display:flex;align-items:baseline;justify-content:space-between;gap:8px;font:750 11px/1.2 Bahnschrift,'Segoe UI',sans-serif;color:#9bbed0; }
+#race-contract-title { color:#80eff9;font-size:14px; }
+#race-contract-progress { margin-top:5px;color:#f6f9fc;font-size:12px;font-weight:800;line-height:1.3;overflow-wrap:anywhere; }
+#race-contract-hud[data-complete="true"] { border-color:#bce768; }
+#race-contract-hud[data-complete="true"] #race-contract-progress { color:#d4fa99; }
+#race-contract-notice { font:650 11px/1.35 'Segoe UI',sans-serif;color:#d4fa99;margin-top:4px; }
+#race-contract-notice:empty { display:none; }
+@media (max-width:1200px), (max-height:700px) {
+  #race-contract-hud { top:calc(var(--hud-edge) + 147px);width:240px;padding:8px 10px; }
+}
+@media (max-width:900px), (max-height:560px) {
+  #race-contract-hud { top:calc(var(--hud-edge) + 136px);width:200px; }
+}
+@media (max-width:600px), (max-height:460px) {
+  #race-contract-hud { top:calc(var(--hud-edge) + 119px);width:min(166px,calc(50% - 12px));padding:6px 8px; }
+  .race-contract-head { font-size:9px; }
+  #race-contract-title { font-size:11px; }
+  #race-contract-progress,#race-contract-notice { font-size:9px; }
+}
+
+
+/* Split timing is informational. Keep it out of weapon and road-warning lanes. */
+#sector-timing { position:absolute;left:50%;bottom:calc(var(--hud-edge) + 91px);transform:translateX(-50%);
+  width:276px;min-height:56px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:4px 10px;
+  padding:8px 13px;z-index:11;border-color:rgba(86,223,242,.5); }
+#sector-timing[hidden] { display:none; }
+#sector-current { font:800 11px/1.2 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:.7px;color:#b5d2dd; }
+#sector-delta { font:850 17px/1.1 Bahnschrift,'Segoe UI',sans-serif;color:#f6f9fc;white-space:nowrap;text-align:right; }
+#sector-detail { grid-column:1/-1;min-height:12px;font:800 10px/1.2 Bahnschrift,'Segoe UI',sans-serif;
+  letter-spacing:.2px;color:#9ad9e6; }
+#sector-timing[data-tone="faster"] { border-color:#8de3ae; }
+#sector-timing[data-tone="faster"] #sector-delta,#sector-timing[data-tone="faster"] #sector-detail { color:#adffc7; }
+#sector-timing[data-tone="slower"] { border-color:#f5b26b; }
+#sector-timing[data-tone="slower"] #sector-delta,#sector-timing[data-tone="slower"] #sector-detail { color:#ffd09b; }
+.finish-sector-analysis { width:min(690px,90vw);margin:18px auto 0;padding:14px 16px;
+  background:rgba(13,27,39,.82);border:1px solid rgba(86,223,242,.35);border-radius:10px;text-align:left;
+  font:600 13px/1.45 Bahnschrift,'Segoe UI',sans-serif; }
+.finish-sector-analysis h2 { font-size:15px;line-height:1.3;letter-spacing:.6px;margin:0 0 10px;color:#d8f5ff; }
+.finish-sector-analysis p { margin:10px 0 0;font-size:13px;color:#d4e4eb; }
+.finish-sector-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px; }
+.finish-sector { display:flex;flex-direction:column;gap:4px;min-width:0;padding:10px;
+  border:1px solid rgba(208,227,239,.25);border-radius:7px;background:rgba(4,14,24,.65); }
+.finish-sector span { color:#b7c3ce;font-size:10px;letter-spacing:.5px; }
+.finish-sector strong { font-size:21px;white-space:nowrap;font-variant-numeric:tabular-nums; }
+.finish-sector small { font-size:11px;font-weight:800;color:#b9d5df; }
+.finish-sector[data-tone="faster"] strong,.finish-sector[data-tone="faster"] small { color:#adffc7; }
+.finish-sector[data-tone="slower"] strong,.finish-sector[data-tone="slower"] small { color:#ffd09b; }
+@media (max-width:1200px), (max-height:700px) {
+  #sector-timing { bottom:calc(var(--hud-edge) + 76px);min-height:51px;width:238px;padding:7px 10px; }
+  #sector-delta { font-size:15px; }
+}
+@media (max-width:900px), (max-height:560px) {
+  #sector-timing { bottom:calc(var(--hud-edge) + 66px);width:208px;min-height:47px; }
+  #sector-current { font-size:10px; }#sector-delta { font-size:14px; }
+  #sector-detail { font-size:9px; }
+}
+@media (max-width:600px) {
+  #sector-timing { left:var(--hud-edge);top:calc(var(--hud-edge) + 202px);bottom:auto;transform:none;
+    width:min(166px,calc(50% - 12px));min-height:46px;grid-template-columns:1fr;gap:2px;padding:4px 7px; }
+  #sector-current { font-size:9px; }
+  #sector-delta { text-align:left;font-size:13px; }
+  #sector-detail { min-height:0;font-size:8px;line-height:1.1;white-space:nowrap; }
+}
+@media (max-width:520px) {
+  .finish-sector-analysis { padding:12px 10px; }
+  .finish-sector-grid { gap:5px; }
+  .finish-sector { padding:7px 5px; }
+  .finish-sector strong { font-size:16px; }
+  .finish-sector span,.finish-sector small { font-size:9px; }
+}
+
+
+/* Impact and missile bearings: peripheral-only markers, separate from race HUD. */
+#threat-feedback { position:fixed;inset:0;z-index:14;pointer-events:none; }
+body:not(.game-session-active) #threat-feedback,body.menu-open #threat-feedback { display:none; }
+.threat-edge { position:absolute;display:flex;align-items:center;gap:7px;min-width:90px;
+  padding:6px 10px;opacity:0;white-space:nowrap;pointer-events:none;
+  background:rgba(15,18,27,.78);border:1px solid transparent;border-radius:7px;
+  font:850 11px/1.1 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:.65px;
+  transition:opacity .15s ease;color:#ff7b89; }
+.threat-edge span { font-size:21px;line-height:1; }
+.threat-edge strong { font:inherit; }
+.threat-edge[data-signal="damage"] { opacity:1;color:#ff7587;border-color:rgba(255,117,135,.8);box-shadow:0 0 12px rgba(255,72,99,.18); }
+.threat-edge[data-signal="rocket"] { opacity:1;color:#ffd36b;border-color:rgba(255,207,100,.8);box-shadow:0 0 12px rgba(255,194,75,.18); }
+.threat-edge[data-threat-direction="front"] { top:27%;left:50%;transform:translateX(-50%); }
+.threat-edge[data-threat-direction="rear"] { bottom:29%;left:50%;transform:translateX(-50%); }
+.threat-edge[data-threat-direction="left"] { top:52%;left:max(9px,1.4vw); }
+.threat-edge[data-threat-direction="right"] { top:52%;right:max(9px,1.4vw);flex-direction:row-reverse; }
+@media(max-width:600px), (max-height:560px) {
+  .threat-edge { gap:4px;min-width:0;padding:4px 6px;font-size:9px; }
+  .threat-edge span { font-size:17px; }
+  .threat-edge[data-threat-direction="front"] { top:32%; }
+  .threat-edge[data-threat-direction="rear"] { bottom:38%; }
+  .threat-edge[data-threat-direction="left"],.threat-edge[data-threat-direction="right"] { top:56%; }
+}
+body.low-quality .threat-edge { box-shadow:none; }
+@media(prefers-reduced-motion:reduce) {
+  .threat-edge { transition:none; }
+}
+
+/* Corner spotter: low-occlusion telemetry, not a steering assist. */
+#corner-spotter {
+  position:absolute;top:40px;left:50%;transform:translateX(-50%);z-index:12;
+  width:276px;min-height:69px;padding:9px 12px 13px;display:grid;
+  grid-template-columns:42px minmax(0,1fr);align-items:center;gap:5px 11px;
+  border-color:rgba(86,223,242,.6);background:linear-gradient(145deg,rgba(9,26,41,.94),rgba(8,15,29,.95));
+  color:#f6f9fc;box-shadow:0 3px 13px rgba(0,0,0,.28);pointer-events:none;
+}
+#corner-spotter[hidden] { display:none; }
+#corner-spotter[data-severity="sharp"] { border-color:rgba(255,190,94,.85); }
+.corner-arrow { display:block;text-align:center;color:#80eff9;font:900 42px/1 Bahnschrift,'Segoe UI',sans-serif; }
+#corner-spotter[data-severity="sharp"] .corner-arrow { color:#ffd28d; }
+.corner-copy { display:flex;flex-direction:column;min-width:0;gap:3px; }
+.corner-eyebrow { font:750 9px/1.2 'Segoe UI',sans-serif;letter-spacing:1px;color:#a4c4d2; }
+#corner-title { font:850 15px/1.16 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:.15px; }
+#corner-distance { color:#c6f7ff;font:850 13px/1.2 Bahnschrift,'Segoe UI',sans-serif; }
+#corner-spotter[data-severity="sharp"] #corner-distance { color:#ffe1aa; }
+.corner-track { grid-column:1/-1;height:4px;margin-top:2px;overflow:hidden;background:#364553;border-radius:4px; }
+#corner-progress { width:100%;height:100%;transform:scaleX(0);transform-origin:left center;
+  background:#80eff9;transition:transform .12s linear; }
+#corner-spotter[data-severity="sharp"] #corner-progress { background:#ffd28d; }
+@media (max-width:900px) {
+  #corner-spotter { width:240px;top:90px;padding:7px 10px 11px;grid-template-columns:33px minmax(0,1fr);gap:4px 8px; }
+  .corner-arrow { font-size:34px; }
+  #corner-title { font-size:13px; }
+}
+@media (max-width:600px) {
+  #corner-spotter { top:auto;bottom:calc(var(--hud-edge) + var(--hud-gauge) + 96px);
+    width:186px;min-height:0;padding:6px 9px 8px;grid-template-columns:30px minmax(0,1fr);gap:3px 7px; }
+  .corner-arrow { font-size:31px; }
+  .corner-eyebrow { font-size:8px;letter-spacing:.2px; }
+  #corner-title { font-size:12px; }
+  #corner-distance { font-size:11px; }
+}
+@media (max-width:600px) and (max-height:560px) {
+  /* No safe telemetry lane remains beside the full combat HUD on short phones. */
+  #corner-spotter { display:none!important; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #corner-progress { transition:none; }
+}
+
+/* Tactical rear glance. Shown only while the player holds the view control. */
+#rearview-indicator {
+  position:fixed;top:82px;left:50%;transform:translateX(-50%);z-index:19;
+  padding:5px 14px;border:1px solid rgba(141,235,251,.84);border-radius:8px;
+  color:#e7fcff;background:rgba(5,24,42,.9);box-shadow:0 3px 16px rgba(0,0,0,.35);
+  font:850 12px/1.25 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:1.2px;
+  white-space:nowrap;text-align:center;pointer-events:none;
+}
+#rearview-indicator[hidden] { display:none; }
+@media (pointer:coarse) {
+  #rearview-indicator { top:62px;padding:4px 9px;font-size:11px;letter-spacing:.5px; }
+}

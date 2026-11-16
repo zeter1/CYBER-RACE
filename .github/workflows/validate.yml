@@ -6,15 +6,21 @@ on:
     paths:
       - "index.html"
       - "src/**"
+      - "assets/**"
+      - "vendor/**"
       - "tests/**"
       - "scripts/**"
+      - "**/*.md"
       - ".github/workflows/validate.yml"
   pull_request:
     paths:
       - "index.html"
       - "src/**"
+      - "assets/**"
+      - "vendor/**"
       - "tests/**"
       - "scripts/**"
+      - "**/*.md"
       - ".github/workflows/validate.yml"
   workflow_dispatch:
 
@@ -42,9 +48,35 @@ jobs:
         shell: bash
         run: |
           find src -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          node --check vendor/three/three.module.js
           node --check scripts/validate-structure.mjs
+          node --check scripts/check-docs.mjs
           node --check tests/contracts.mjs
+          node --check tests/drift-mastery.mjs
+          node --check tests/slipstream.mjs
+          node --check tests/corner-spotter.mjs
+          node --check tests/pilot-tutorial.mjs
+          node --check tests/race-contracts.mjs
+          node --check src/game/sector-timing.js
+          node --check src/game/lap-ghost.js
+          node --check tests/sector-timing.mjs
+          node --check tests/lap-ghost.mjs
+          node --check tests/threat-feedback.mjs
+          node --check tests/defense-pulse.mjs
+          node --check tests/overtake-events.mjs
+          node --check tests/frame-quality.mjs
           node --check tests/scenarios.mjs
+          node --check tests/opponent-tactics.mjs
+          node --check tests/opponent-combat.mjs
+          node --check tests/combat-effects.mjs
+          node --check tests/audio-system.mjs
+          node --check tests/garage.mjs
+          node --check tests/championship.mjs
+          node --check tests/browser-smoke.mjs
+          node --check tests/approved-features.mjs
+
+      - name: Markdown local links and negative controls
+        run: node scripts/check-docs.mjs --self-test
 
       - name: Project structure
         run: node scripts/validate-structure.mjs
@@ -52,8 +84,62 @@ jobs:
       - name: Gameplay contract tests
         run: node tests/contracts.mjs
 
+      - name: Drift mastery and fair scoring regression
+        run: node tests/drift-mastery.mjs
+
+      - name: Slipstream tactical nitro and anti-farming
+        run: node tests/slipstream.mjs
+
+      - name: Corner spotter pure route tests
+        run: node tests/corner-spotter.mjs
+
+      - name: Pilot onboarding and controls regressions
+        run: node tests/pilot-tutorial.mjs
+
+      - name: Race contracts and useful pickup contracts
+        run: node tests/race-contracts.mjs
+
+      - name: Sector timing and best-split regression
+        run: node tests/sector-timing.mjs
+
+      - name: Ghost best-lap timeline, rendering and valid record contract
+        run: node tests/lap-ghost.mjs
+
+      - name: Directional combat threat and damage bearing contracts
+        run: node tests/threat-feedback.mjs
+
+      - name: Precision pulse reward and incoming rocket cue contracts
+        run: node tests/defense-pulse.mjs
+
+      - name: Clean overtake scoring and anti-farming regression
+        run: node tests/overtake-events.mjs
+
+      - name: Frame-rate and adaptive-quality regression
+        run: node tests/frame-quality.mjs
+
       - name: Deterministic replay scenarios
         run: node tests/scenarios.mjs
+
+      - name: Opponent tactical scenarios
+        run: node tests/opponent-tactics.mjs
+
+      - name: Opponent combat scenarios
+        run: node tests/opponent-combat.mjs
+
+      - name: Combat collision contracts
+        run: node tests/combat-effects.mjs
+
+      - name: Audio lifecycle contracts
+        run: node tests/audio-system.mjs
+
+      - name: Garage profile and runtime contracts
+        run: node tests/garage.mjs
+
+      - name: Championship progression contracts
+        run: node tests/championship.mjs
+
+      - name: Approved accessibility, records, checkpoint and collision contracts
+        run: node tests/approved-features.mjs
 
       - name: Browser boot smoke
         shell: bash
@@ -80,6 +166,18 @@ jobs:
             exit 1
           fi
           echo "CYBER RACE browser boot smoke passed."
+
+      - name: Browser gameplay, road instancing and asset recovery smoke
+        run: node tests/browser-smoke.mjs --road
+
+      - name: Mobile cockpit touch and landscape smoke
+        run: node tests/browser-smoke.mjs --mobile
+
+      - name: Extended championship, weapons and WebGL smoke
+        run: node tests/browser-smoke.mjs --deep --extended --approved
+
+      - name: Persistent best-lap ghost across page reload and restart
+        run: node tests/browser-smoke.mjs --ghost
 
       - name: Diff hygiene
         run: git diff --check

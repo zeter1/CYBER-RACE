@@ -11,7 +11,10 @@
     }
   };
   core.saveObject=function saveObject(key,value){
-    try{localStorage.setItem(key,JSON.stringify(value));return true;}
-    catch{return false;}
+    try{
+      const serialized=JSON.stringify(value);
+      localStorage.setItem(key,serialized);
+      return localStorage.getItem(key)===serialized;
+    }catch{return false;}
   };
 })();

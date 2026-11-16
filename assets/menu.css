@@ -1,0 +1,348 @@
+/* Shared pit-stop styling for the main menu and pause. Gameplay HUD lives in hud.css. */
+.menu-icons { position:absolute; width:0; height:0; overflow:hidden; }
+#start-screen { display:block; padding:0; background:#0c0e1d; backdrop-filter:none; overscroll-behavior:contain; color:#f5f6ff; }
+#start-screen::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg,rgba(8,10,23,.03) 35%,rgba(8,10,23,.55)),url("menu-pit-stop.png") center top / cover no-repeat; pointer-events:none; }
+#start-screen .start-shell { position:relative; width:min(100%,1720px); min-height:100%; margin:auto; padding:22px clamp(22px,3.4vw,56px) 14px; }
+:is(#start-screen,#pause-menu) svg { width:26px; height:26px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.menu-header { display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:38px; }
+.menu-brand { display:flex; align-items:center; gap:16px; font-size:clamp(15px,1.75vw,27px); font-weight:900; font-style:italic; white-space:nowrap; letter-spacing:.3px; }
+.menu-brand b { margin:0 10px; color:#80eff9; }
+.menu-brand em { color:#80eff9; font-size:.8em; letter-spacing:1.5px; }
+.brand-mark { display:grid; gap:4px; width:52px; transform:skew(-32deg); }
+.brand-mark i { height:6px; background:linear-gradient(90deg,#743a48,#ff5867); }
+.brand-mark i:nth-child(2) { transform:translateX(-5px); }
+.brand-mark i:nth-child(3) { transform:translateX(-10px); }
+:is(#start-screen,#pause-menu) .fullscreen-button { display:inline-flex; justify-content:center; align-items:center; gap:10px; min-height:40px; max-width:44%; padding:8px 15px; border:1px solid #69768b; border-radius:9px; color:#f5f6ff; background:rgba(11,15,30,.65); font:600 16px/1.3 'Segoe UI',Arial,sans-serif; cursor:pointer; }
+:is(#start-screen,#pause-menu) .fullscreen-button:hover { background:rgba(39,47,69,.9); border-color:#80eff9; }
+.menu-hero { position:relative; display:flex; align-items:center; min-height:clamp(330px,40vh,420px); padding:20px 0 24px; }
+.hero-copy { position:relative; width:48%; max-width:610px; z-index:1; }
+#start-screen h1 { display:flex; flex-direction:column; margin:0; font-family:'Arial Black','Segoe UI',Arial,sans-serif; font-size:clamp(76px,8.05vw,128px); line-height:.82; letter-spacing:-4px; font-weight:950; font-style:italic; text-shadow:none; }
+#start-screen h1 > span:nth-child(2) { color:#80eff9; margin-top:7px; }
+#start-screen h1 small { display:flex; align-items:center; justify-content:center; gap:24px; max-width:430px; margin-top:18px; font:800 clamp(15px,1.6vw,25px)/1 'Segoe UI',Arial,sans-serif; font-style:italic; letter-spacing:9px; }
+#start-screen h1 small::before,#start-screen h1 small::after { content:""; width:38px; height:4px; background:#ef5263; transform:skew(-20deg); }
+#start-screen p.sub { margin:16px 0 10px; font-size:clamp(18px,1.7vw,26px); line-height:1.35; color:#cbd3e6; }
+.race-meta { display:flex; gap:17px; align-items:center; font-size:clamp(15px,1.32vw,21px); font-weight:650; letter-spacing:.2px; }
+.race-meta span { color:#8a95b1; }
+#start-screen .single-race-selector { width:min(100%,450px); padding:0; margin-top:14px; border:0; min-width:0; }
+.single-race-selector legend { padding:0; margin-bottom:7px; color:#b9cbe0; font:700 11px/1.3 'Segoe UI',Arial,sans-serif; letter-spacing:1.5px; }
+.single-race-options { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.single-race-options label { position:relative; cursor:pointer; min-width:0; }
+.single-race-options input { position:absolute; width:1px; height:1px; opacity:0; }
+.single-race-options label > span { display:block; padding:8px 5px; min-height:47px; background:rgba(10,20,35,.8); color:#e4eef8; border:1px solid #738498; border-radius:9px; font:750 clamp(12px,3vw,15px)/1.2 'Segoe UI',Arial,sans-serif; text-align:center; }
+.single-race-options label small { display:block; margin-top:4px; font-size:12px; font-weight:500; }
+.single-race-options input:checked + span { background:#80eff9; color:#07111c; border-color:#80eff9; }
+.single-race-options input:focus-visible + span { outline:3px solid #fff; outline-offset:3px; }
+#start-screen .single-race-rewards { margin:7px 0 0; color:#d1dfed; font-size:12px; line-height:1.4; }
+#start-screen .start-race-button { display:flex; justify-content:space-between; align-items:center; gap:20px; width:min(100%,450px); margin-top:23px; padding:17px 30px; min-height:66px; border-radius:14px; background:#80eff9; color:#07111c; font:950 italic clamp(21px,2.05vw,31px)/1.15 'Segoe UI',Arial,sans-serif; box-shadow:0 0 30px rgba(76,222,249,.25); text-align:left; transition:transform .2s,box-shadow .2s,background-color .2s,opacity .2s; }
+#start-screen .start-race-button svg { width:33px; height:33px; stroke-width:2.5; }
+#start-screen .start-race-button:hover { transform:translateY(-2px); background:#a3f7ff; box-shadow:0 0 40px rgba(76,222,249,.4); }
+#start-screen .start-race-button:disabled { transform:none; opacity:.65; box-shadow:none; }
+.menu-status { margin-top:8px; min-height:17px; max-width:450px; color:#b3c3d8; font-size:12px; line-height:1.4; }
+.menu-status:empty { min-height:0; margin:0; }
+#start-screen.menu-load-error .hero-copy { width:min(100%,720px); }
+#start-screen.menu-load-error h1 { font-size:clamp(30px,4vw,58px); line-height:1.1; letter-spacing:0; }
+.pause-menu-status { max-width:600px; color:#ffcb95; font-size:14px; text-align:center; margin-bottom:25px; }
+.pause-menu-status:empty { display:none; }
+.track-caption { position:absolute; right:0; bottom:27px; display:flex; align-items:center; gap:12px; font-size:clamp(15px,1.35vw,21px); font-weight:850; font-style:italic; letter-spacing:.6px; text-shadow:0 2px 12px #070a19; border-bottom:3px solid #ee566e; padding:7px 0; }
+.track-caption svg { color:#ef6277; }
+#start-screen #record-info { width:100%; display:flex; align-items:center; gap:25px; margin:0 0 22px; padding:15px 22px; border:1px solid #65768b; border-radius:15px; background:rgba(24,31,48,.78); font-family:'Segoe UI',Arial,sans-serif; text-align:left; }
+#start-screen .menu-records h2 { display:flex; align-items:center; gap:16px; margin:0; flex:0 1 33%; font-size:clamp(17px,1.65vw,25px); font-weight:900; font-style:italic; white-space:nowrap; color:#f5f6ff; }
+#start-screen .menu-records h2 svg { width:35px; height:35px; color:#80eff9; }
+.menu-records dl { flex:1; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); }
+.menu-records dl > div { padding:0 20px; border-left:1px solid #68768b; min-width:0; }
+.menu-records dl > div:first-child { border-left:0; }
+.menu-records dt { font-size:12px; font-weight:650; letter-spacing:1.3px; color:#c1d1e8; white-space:nowrap; }
+.menu-records dd { margin-top:3px; font-size:clamp(23px,2.15vw,32px); line-height:1.1; font-weight:900; font-style:italic; color:#80eff9; white-space:nowrap; }
+.menu-records dd[data-record="bestTotal"] { color:#f5f6ff; }
+.menu-layout { display:grid; grid-template-columns:1.12fr 1fr; gap:24px; }
+.menu-panel { min-width:0; padding:20px 23px; background:linear-gradient(135deg,rgba(27,35,53,.9),rgba(16,21,36,.94)); border:1px solid #667b90; border-radius:17px; }
+:is(#start-screen,#pause-menu) .menu-panel h2 { display:flex; align-items:center; gap:12px; margin:0 0 20px; font-size:clamp(19px,1.65vw,26px); font-style:italic; font-weight:900; line-height:1.2; }
+:is(#start-screen,#pause-menu) .menu-panel h2 svg { color:#80eff9; width:30px; height:30px; }
+.heading-line { height:1px; background:#65748b; flex:1; min-width:12px; margin-left:8px; }
+:is(#start-screen,#pause-menu) kbd { display:inline-flex; justify-content:center; align-items:center; min-width:66px; min-height:32px; padding:4px 9px; border:1px solid #c3d2e2; border-radius:7px; box-shadow:inset 0 -3px rgba(255,255,255,.05); font:650 15px/1.2 'Segoe UI',Arial,sans-serif; color:#f5f6ff; background:rgba(5,11,23,.45); white-space:nowrap; }
+.quick-controls { display:grid; grid-template-columns:1fr 1.05fr; gap:12px 20px; }
+.quick-controls > div { display:flex; align-items:center; gap:14px; min-width:0; font-size:16px; line-height:1.3; }
+.quick-controls > div:nth-child(even) { border-left:1px solid #66748c; padding-left:20px; }
+.quick-controls > div:first-child kbd { font-size:13px; padding:5px 8px; }
+.utility-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px 13px; border-top:1px solid #5e7086; margin-top:20px; padding-top:15px; }
+.utility-controls > span { display:flex; align-items:center; gap:7px; font-size:12px; white-space:nowrap; }
+:is(#start-screen,#pause-menu) .utility-controls kbd { font-size:12px; min-width:33px; min-height:25px; padding:3px 6px; }
+#controls-help-btn { color:#80eff9; background:transparent; border:0; border-bottom:1px solid currentColor; font:600 13px/1.4 'Segoe UI',Arial,sans-serif; margin-left:auto; cursor:pointer; padding:3px 0; }
+.difficulty-setting { display:grid; grid-template-columns:108px minmax(0,1fr); align-items:center; border:0; min-width:0; padding:0; margin:0 0 17px; }
+.difficulty-setting legend { float:left; padding:0; font-size:16px; font-weight:650; }
+.difficulty-options { display:flex; min-width:0; border:1px solid #c1cfe0; border-radius:9px; background:rgba(7,12,25,.5); }
+.difficulty-options label { flex:1; min-width:0; position:relative; cursor:pointer; }
+.difficulty-options input,.menu-switch input { position:absolute; width:1px; height:1px; opacity:0; }
+.difficulty-options label > span { display:block; padding:9px 5px; border-radius:8px; text-align:center; font-size:15px; line-height:1.25; font-weight:600; }
+.difficulty-options input:checked + span { background:#80eff9; color:#07111c; font-weight:750; }
+.difficulty-options input:focus-visible + span { outline:3px solid #fff; outline-offset:4px; }
+.menu-quality { display:grid; grid-template-columns:108px minmax(0,1fr); gap:0; align-items:center; font-size:16px; font-weight:650; }
+.menu-quality select { width:100%; min-width:0; border:1px solid #c1cfe0; border-radius:9px; background:#101726; padding:9px 12px; font:600 15px/1.4 'Segoe UI',Arial,sans-serif; color:#f5f6ff; color-scheme:dark; cursor:pointer; }
+.menu-toggles { display:flex; gap:22px; justify-content:space-between; margin-top:23px; padding-top:17px; border-top:1px solid #5e7086; }
+.menu-switch { position:relative; display:flex; align-items:center; gap:10px; min-height:34px; cursor:pointer; font-size:15px; font-weight:600; }
+.menu-switch + .menu-switch { padding-left:20px; border-left:1px solid #5e7086; }
+.menu-toggles { flex-wrap:wrap; }
+.menu-switch.pilot-switch { flex:1 1 100%;padding:12px 0 0!important;border:0!important;border-top:1px solid #5e7086!important; }
+.pilot-switch .switch-track { margin-left:10px; }
+.pilot-replay-button { margin-top:10px;padding:6px 0;color:#80eff9;border:0;border-bottom:1px solid currentColor;background:transparent;cursor:pointer;font:650 13px/1.4 'Segoe UI',sans-serif; }
+.pilot-replay-button:hover { color:#fff; }
+.menu-switch > span:not(.switch-track) { white-space:nowrap; }
+:is(#start-screen,#pause-menu) .menu-switch svg { width:25px; height:25px; }
+.switch-track { flex:0 0 auto; width:48px; height:27px; border:1px solid #717d90; border-radius:20px; background:#4b5363; transition:background .15s; margin-left:auto; }
+.switch-track::after { content:""; display:block; height:21px; width:21px; margin:2px; border-radius:50%; background:#f7faff; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:transform .15s; }
+.menu-switch input:checked + .switch-track { background:#80eff9; border-color:#80eff9; }
+.menu-switch input:checked + .switch-track::after { transform:translateX(21px); }
+.menu-switch input:focus-visible + .switch-track { outline:3px solid #fff; outline-offset:4px; }
+.menu-footer { display:flex; align-items:center; justify-content:center; gap:25px; padding-top:23px; color:#a8b8cf; font-size:10px; letter-spacing:4px; }
+.menu-footer > span { height:1px; background:linear-gradient(90deg,transparent,#657890); max-width:330px; flex:1; }
+.menu-footer > span:last-child { transform:rotate(180deg); }
+:is(#start-screen,#pause-menu) button:focus-visible,:is(#start-screen,#pause-menu) select:focus-visible { outline:3px solid #fff; outline-offset:4px; }
+#controls-help { width:min(580px,calc(100% - 32px)); max-height:calc(100% - 32px); margin:auto; padding:25px; overflow:auto; border:1px solid #80eff9; border-radius:17px; color:#f5f6ff; background:#121a2b; box-shadow:0 15px 80px #000; }
+#controls-help::backdrop { background:rgba(3,6,16,.82); backdrop-filter:blur(5px); }
+.help-header { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:20px; }
+#start-screen .help-header h2 { font-size:25px; margin:0; }
+#controls-help-close { color:#fff; background:#26344b; border:1px solid #698096; border-radius:8px; font:28px/1 'Segoe UI',Arial,sans-serif; width:40px; height:40px; cursor:pointer; }
+.help-controls > div { display:grid; grid-template-columns:minmax(155px,auto) 1fr; align-items:center; gap:18px; margin-bottom:10px; }
+.help-controls dd { font-size:15px; line-height:1.4; }
+#controls-help > p { font-size:13px; color:#b2c1d8; border-top:1px solid #3d506a; margin-top:18px; padding-top:15px; }
+@media (min-width:1101px) and (max-height:950px) {
+  #start-screen .start-shell { padding-top:14px; }
+  .menu-hero { min-height:305px; padding:18px 0; }
+  #start-screen h1 { font-size:88px; }
+  #start-screen h1 small { font-size:17px; margin-top:13px; }
+  #start-screen p.sub { font-size:19px; margin-top:12px; }
+  #start-screen .start-race-button { min-height:56px; padding:12px 25px; margin-top:17px; font-size:25px; }
+  :is(#start-screen,#pause-menu) .menu-panel h2 { margin-bottom:16px; }
+  .menu-panel { padding:17px 20px; }
+  .quick-controls { gap:8px 16px; }
+  #start-screen #record-info { padding:12px 20px; margin-bottom:18px; }
+  .menu-footer { padding-top:17px; }
+}
+@media (max-width:1200px) {
+  .menu-layout { gap:18px; grid-template-columns:1.04fr 1fr; }
+  .menu-panel { padding:18px; }
+  .quick-controls { gap:10px 10px; }
+  .quick-controls > div { gap:9px; font-size:14px; }
+  .quick-controls > div:nth-child(even) { padding-left:10px; }
+  .difficulty-setting,.menu-quality { grid-template-columns:88px minmax(0,1fr); }
+  .menu-toggles { gap:12px; }
+  .menu-switch { gap:7px; font-size:13px; }
+  .menu-switch + .menu-switch { padding-left:12px; }
+  #start-screen .menu-records h2 { flex-basis:29%; font-size:19px; gap:10px; }
+  .menu-records dl > div { padding:0 13px; }
+  .menu-records dt { font-size:10px; letter-spacing:.8px; }
+}
+@media (max-width:1100px) {
+  .menu-layout { grid-template-columns:1fr; }
+  .menu-panel { padding:22px; }
+  .quick-controls { gap:12px 24px; }
+  .quick-controls > div { font-size:16px; gap:16px; }
+  .quick-controls > div:nth-child(even) { padding-left:24px; }
+  .menu-toggles { justify-content:flex-start; gap:30px; }
+  .menu-switch { font-size:16px; gap:12px; }
+  .menu-switch + .menu-switch { padding-left:30px; }
+  #start-screen #record-info { display:block; }
+  #start-screen .menu-records h2 { margin-bottom:14px; }
+  .menu-records dl > div:first-child { padding-left:0; }
+  .hero-copy { width:55%; }
+  #start-screen .start-race-button { font-size:23px; padding:16px 22px; }
+}
+@media (max-width:760px) {
+  #start-screen .start-shell { padding:16px; }
+  #start-screen::before { background:linear-gradient(90deg,rgba(8,10,23,.7),rgba(8,10,23,.1)),linear-gradient(0deg,#0c0e1d 10%,transparent 65%),url("menu-pit-stop.png") 64% top / auto 700px no-repeat; }
+  .menu-header { align-items:flex-start; gap:12px; }
+  .menu-brand { gap:10px; font-size:16px; flex-wrap:wrap; white-space:normal; }
+  .menu-brand b { margin:0 5px; }
+  .menu-brand em { display:block; margin-top:2px; }
+  .brand-mark { width:31px; gap:3px; }
+  .brand-mark i { height:4px; }
+  :is(#start-screen,#pause-menu) .fullscreen-button { font-size:12px; max-width:46%; padding:8px 10px; gap:7px; }
+  :is(#start-screen,#pause-menu) .fullscreen-button svg { width:20px; height:20px; }
+  .menu-hero { min-height:350px; padding:35px 0 50px; }
+  .hero-copy { width:100%; }
+  #start-screen h1 { font-size:clamp(62px,21vw,82px); letter-spacing:-3px; }
+  #start-screen h1 small { max-width:280px; font-size:17px; letter-spacing:7px; gap:18px; margin-top:16px; }
+  #start-screen p.sub { font-size:20px; }
+  #start-screen .start-race-button { width:min(100%,385px); min-height:60px; font-size:23px; }
+  .track-caption { font-size:12px; bottom:9px; }
+  #start-screen #record-info { display:block; padding:17px 12px; margin-bottom:16px; }
+  #start-screen .menu-records h2 { font-size:17px; margin-bottom:15px; }
+  #start-screen .menu-records h2 svg { width:25px; height:25px; }
+  .menu-records dl > div { padding:0 10px; }
+  .menu-records dl > div:first-child { padding-left:0; }
+  .menu-records dl > div:last-child { padding-right:0; }
+  .menu-records dt { font-size:9px; letter-spacing:0; }
+  .menu-records dd { font-size:clamp(17px,5.5vw,23px); white-space:normal; overflow-wrap:anywhere; }
+  .menu-layout { gap:16px; }
+  .menu-panel { padding:18px 14px; }
+  :is(#start-screen,#pause-menu) .menu-panel h2 { font-size:19px; gap:10px; margin-bottom:19px; }
+  .heading-line { min-width:5px; margin-left:0; }
+  .quick-controls { gap:12px 10px; }
+  .quick-controls > div { gap:8px; font-size:13px; }
+  .quick-controls > div:nth-child(even) { padding-left:10px; }
+  :is(#start-screen,#pause-menu) kbd { min-width:52px; font-size:13px; padding:4px 6px; }
+  .quick-controls > div:first-child { flex-wrap:wrap; gap:5px; }
+  .quick-controls > div:first-child kbd { font-size:10px; }
+  .utility-controls { gap:12px; margin-top:17px; padding-top:14px; }
+  #controls-help-btn { font-size:13px; }
+  .difficulty-setting,.menu-quality { grid-template-columns:1fr; gap:8px; }
+  .difficulty-setting legend { float:none; margin-bottom:8px; font-size:14px; }
+  .difficulty-options label > span { font-size:14px; padding:11px 6px; }
+  .menu-quality { font-size:14px; }
+  .menu-toggles { gap:16px; flex-wrap:wrap; margin-top:18px; padding-top:15px; }
+  .menu-switch { font-size:13px; gap:8px; }
+  .menu-switch + .menu-switch { padding-left:16px; }
+  :is(#start-screen,#pause-menu) .menu-switch svg { width:20px; height:20px; }
+  .switch-track { width:42px; height:25px; }
+  .switch-track::after { height:19px; width:19px; }
+  .menu-switch input:checked + .switch-track::after { transform:translateX(17px); }
+  .menu-footer { font-size:8px; letter-spacing:2px; gap:12px; padding-top:20px; }
+  #controls-help { padding:20px 16px; }
+  .help-controls > div { grid-template-columns:minmax(115px,auto) 1fr; gap:12px; }
+  .help-controls dd { font-size:13px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #start-screen *,#start-screen *::before,#start-screen *::after { transition:none!important; animation:none!important; }
+  #start-screen .start-race-button:hover { transform:none; }
+}
+
+/* Pause uses the same panels, keycaps and controls as the starting screen. */
+#pause-menu { display:block; padding:0; background:#0c0e1d; backdrop-filter:none; overscroll-behavior:contain; }
+#pause-menu::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg,rgba(8,10,23,.25),rgba(8,10,23,.9) 90%),url("menu-pit-stop.png") center top / cover no-repeat; pointer-events:none; }
+.pause-shell { position:relative; width:min(100%,1480px); min-height:100%; margin:auto; padding:22px clamp(22px,3.4vw,56px) 20px; }
+.pause-hero { position:relative; display:flex; align-items:center; min-height:310px; padding:28px 0 34px; }
+.pause-copy { width:min(55%,650px); }
+.pause-eyebrow { display:flex; align-items:center; gap:10px; color:#a6edfa; font-size:12px; font-weight:700; letter-spacing:2.5px; }
+.pause-eyebrow > span { display:inline-flex; align-items:center; justify-content:center; width:25px; height:25px; border:1px solid #6ebacb; border-radius:6px; font-size:18px; }
+#pause-menu #pause-title { margin:10px 0 8px; color:#f5f6ff; font:950 italic clamp(60px,7.2vw,104px)/1 'Arial Black','Segoe UI',Arial,sans-serif; letter-spacing:-2px; text-shadow:none; }
+.pause-subtitle { color:#cbd3e6; font-size:18px; line-height:1.4; }
+#pause-menu .pause-resume { display:flex; align-items:center; justify-content:space-between; gap:16px; width:min(100%,500px); min-height:64px; padding:17px 24px; margin:23px 0 0; border-radius:13px; color:#07111c; background:#80eff9; font:900 italic clamp(20px,1.85vw,28px)/1.2 'Segoe UI',Arial,sans-serif; text-align:left; box-shadow:0 0 30px rgba(76,222,249,.25); transition:background-color .2s,box-shadow .2s,transform .2s; }
+#pause-menu .pause-resume svg { width:32px; height:32px; stroke-width:2.4; }
+#pause-menu .pause-resume:hover { transform:translateY(-2px); background:#a3f7ff; box-shadow:0 0 40px rgba(76,222,249,.4); }
+#pause-menu .pause-menu-status { margin:12px 0 0; color:#ffcb95; font-size:14px; line-height:1.4; text-align:left; }
+#pause-menu .pause-hero .track-caption { bottom:32px; }
+#pause-menu .menu-panel h2 { text-shadow:none; letter-spacing:0; }
+.pause-difficulty { margin-bottom:17px; }
+.pause-secondary-actions { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:20px; }
+.pause-aux-button { display:flex; align-items:center; justify-content:center; gap:12px; min-height:52px; padding:12px 16px; border:1px solid #667b90; border-radius:11px; color:#dce8fb; background:rgba(19,28,45,.95); font:750 15px/1.3 'Segoe UI',Arial,sans-serif; cursor:pointer; transition:background-color .15s,border-color .15s; }
+.pause-aux-button > span { font-size:25px; line-height:1; }
+.pause-aux-button:hover { background:#233149; border-color:#80eff9; }
+.pause-exit { color:#ffb8c4; border-color:#925569; }
+.pause-exit:hover { background:#382335; border-color:#f391a5; }
+@media (min-width:1101px) and (max-height:820px) {
+  .pause-shell { padding-top:14px; }
+  .pause-hero { min-height:250px; padding:22px 0; }
+  #pause-menu #pause-title { font-size:74px; }
+  #pause-menu .pause-resume { min-height:56px; padding:13px 22px; margin-top:17px; }
+}
+@media (max-width:760px) {
+  .pause-shell { padding:16px; }
+  #pause-menu::before { background:linear-gradient(90deg,rgba(8,10,23,.7),rgba(8,10,23,.35)),linear-gradient(0deg,#0c0e1d 10%,transparent 65%),url("menu-pit-stop.png") 64% top / auto 700px no-repeat; }
+  .pause-hero { min-height:330px; padding:28px 0 52px; }
+  .pause-copy { width:100%; }
+  .pause-eyebrow { font-size:10px; letter-spacing:1.5px; }
+  #pause-menu #pause-title { font-size:clamp(56px,17vw,78px); }
+  .pause-subtitle { font-size:16px; max-width:310px; }
+  #pause-menu .pause-resume { width:100%; font-size:19px; padding:17px 18px; gap:12px; }
+  #pause-menu .pause-resume svg { width:27px; height:27px; }
+  #pause-menu .pause-hero .track-caption { bottom:9px; }
+  .pause-secondary-actions { grid-template-columns:1fr; gap:12px; margin-top:16px; }
+  .pause-aux-button { min-height:48px; font-size:14px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #pause-menu *,#pause-menu *::before,#pause-menu *::after { transition:none!important; animation:none!important; }
+  #pause-menu .pause-resume:hover { transform:none; }
+}
+
+/* About stays in each menu's scrolling content, after the race controls. */
+.menu-about { margin-top:8px; padding-bottom:18px; }
+:is(#start-screen,#pause-menu) .menu-about > .menu-footer { margin:0; font:650 12px/1.5 'Segoe UI',Arial,sans-serif; letter-spacing:3px; text-shadow:none; }
+.menu-about-content { display:grid; grid-template-columns:1.12fr 1fr; gap:24px; margin-top:20px; padding:24px; border:1px solid #45596f; border-radius:17px; background:linear-gradient(135deg,rgba(20,29,46,.94),rgba(11,17,31,.96)); }
+.menu-about-content > div { min-width:0; }
+.menu-about h3 { margin:0 0 10px; color:#f5f6ff; font-size:20px; line-height:1.35; font-weight:800; }
+.menu-about-description h3 { font-style:italic; }
+.menu-about-description h3 span { color:#80eff9; }
+.menu-about-description p { max-width:640px; color:#c6d3e5; font-size:15px; line-height:1.7; }
+.menu-about-developer { padding-left:24px; border-left:1px solid #45596f; }
+.menu-about-label { margin:0 0 7px; color:#a8b8cf; font-size:11px; font-weight:650; letter-spacing:2px; }
+.menu-about a { display:inline-flex; align-items:center; gap:7px; min-height:40px; max-width:100%; color:#80eff9; font-size:14px; line-height:1.5; text-decoration:underline; text-underline-offset:4px; overflow-wrap:anywhere; }
+.menu-about a:hover { color:#fff; }
+.menu-about a:focus-visible { outline:3px solid #fff; outline-offset:4px; border-radius:3px; }
+.menu-about .developer-site { font-weight:650; }
+.menu-about-links { display:flex; flex-wrap:wrap; column-gap:20px; margin-top:4px; }
+@media (max-width:800px) {
+  .menu-about-content { grid-template-columns:minmax(0,1fr); gap:20px; padding:20px; }
+  .menu-about-developer { padding:20px 0 0; border-left:0; border-top:1px solid #45596f; }
+  .menu-about h3 { font-size:18px; }
+}
+
+/* Championship uses the existing menu palette and remains in its scroll flow. */
+.championship-panel { margin:0 0 24px; }
+.championship-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.championship-eyebrow { color:#80eff9; font-size:11px; letter-spacing:2px; margin:0 0 7px; }
+#start-screen .championship-heading h2 { margin:0; }
+.championship-badge { border:1px solid #80eff9; color:#80eff9; border-radius:6px; padding:8px 12px; font-size:12px; font-weight:800; white-space:nowrap; }
+.championship-intro { margin:13px 0 18px; color:#edf6ff; font-size:17px; }
+.championship-stages { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); list-style:none; gap:12px; padding:0; margin:0 0 16px; }
+.championship-stages li { padding:15px; border:1px solid #45596f; border-left:3px solid #80eff9; background:#101c2c; }
+.championship-stages b,.championship-stages span { display:block; }
+.championship-stages b { color:#e9f7ff; font-size:15px; }
+.championship-stages span { color:#b6cada; margin-top:7px; font-size:13px; }
+.championship-rules,.championship-status { color:#bed0e2; font-size:13px; line-height:1.6; margin:12px 0; }
+.championship-status { color:#ffe09b; min-height:1.6em; }
+.championship-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:18px; }
+#start-screen .championship-actions .btn { font-size:14px; margin:0; padding:13px 20px; min-height:46px; }
+.championship-actions [hidden],#championship-results[hidden] { display:none!important; }
+.championship-table { width:100%; border-collapse:collapse; font-size:14px; text-align:left; margin:12px 0; color:#d8e8f8; }
+.championship-table caption { text-align:left; font-weight:750; color:#f2f9ff; margin-bottom:10px; }
+.championship-table th,.championship-table td { border-bottom:1px solid #43576c; padding:8px 10px; }
+.championship-table th { color:#a8c2d9; font-size:12px; }
+.championship-table .championship-player { background:#183b48; color:#80eff9; font-weight:800; }
+#finish-screen { overflow-y:auto; justify-content:flex-start; padding:40px 20px; }
+#finish-screen .finish-stats { font-size:17px; margin:15px 0; }
+.championship-results { width:min(920px,100%); }
+.championship-result-grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+.championship-results p { color:#bed0e2; font-size:13px; line-height:1.6; text-align:center; }
+#championship-summary > p { color:#80eff9; margin-top:16px; line-height:1.5; }
+@media(max-width:760px) {
+  .championship-stages,.championship-result-grid { grid-template-columns:minmax(0,1fr); }
+  .championship-heading { align-items:flex-start; }
+  .championship-badge { padding:6px 8px; }
+  .championship-actions { flex-direction:column; }
+  #start-screen .championship-actions .btn { width:100%; }
+  .championship-table th,.championship-table td { padding:8px 6px; }
+  #finish-screen { padding:25px 12px; }
+}
+
+/* Optional contracts are selected only in the single-race start menu. */
+#start-screen .race-contract-selector { width:min(100%,450px); margin-top:12px;padding:0;border:0;min-width:0; }
+.race-contract-selector legend { margin-bottom:6px;color:#c6def0;font:700 11px/1.3 'Segoe UI',sans-serif;letter-spacing:1px; }
+.race-contract-selector legend span { color:#80eff9;letter-spacing:0;font-size:10px; }
+.race-contract-options { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px; }
+.race-contract-options label { position:relative;min-width:0;cursor:pointer; }
+.race-contract-options input { position:absolute;width:1px;height:1px;opacity:0; }
+.race-contract-options label > span { display:block;border:1px solid #647b8b;border-radius:8px;min-height:38px;padding:5px 9px;background:rgba(8,19,33,.86);font:700 12px/1.2 'Segoe UI',sans-serif;color:#e1f2fc; }
+.race-contract-options small { display:block;font-size:10px;font-weight:500;color:#aabfd0;margin-top:3px; }
+.race-contract-options input:checked + span { background:#234956;border-color:#80eff9;color:#e9ffff; }
+.race-contract-options input:checked + span small { color:#b9eaff; }
+.race-contract-options input:focus-visible + span { outline:3px solid white;outline-offset:2px; }
+#start-screen .race-contract-selector + .start-race-button { margin-top:12px; }
+
+
+/* Separate restart confirmation keeps a long race safe from accidental R/press. */
+#restart-confirm { position:fixed;inset:0;margin:auto;width:min(480px,calc(100vw - 28px));max-height:calc(100dvh - 28px);
+  padding:26px 28px;overflow:auto;border:1px solid #6eeaff;border-radius:14px;
+  background:linear-gradient(155deg,#152638,#09111e);color:#f5f9ff;
+  box-shadow:0 22px 75px rgba(0,0,0,.68);font-family:Bahnschrift,'Segoe UI',sans-serif; }
+#restart-confirm::backdrop { background:rgba(0,5,14,.78); }
+#restart-confirm h2 { margin:0 0 12px;color:#ffdd79;font-size:clamp(20px,4vw,27px);line-height:1.2; }
+#restart-confirm p { margin:0 0 22px;color:#d7e6f0;font-size:14px;line-height:1.5; }
+.restart-confirm-actions { display:flex;gap:10px;flex-wrap:wrap; }
+.restart-confirm-actions button { flex:1 1 160px;min-height:49px;padding:10px 14px;border-radius:8px;border:1px solid #5f8a99;
+  background:#1b3040;color:#eff9fd;font:800 12px/1.25 'Segoe UI',sans-serif;cursor:pointer; }
+#restart-confirm-cancel { background:#76e8f2;color:#081725;border-color:#76e8f2; }
+#restart-confirm-accept { color:#ffd5c5;border-color:#e18a70; }
+#restart-confirm button:focus-visible { outline:3px solid #fff;outline-offset:3px; }
+#restart-confirm button:hover { filter:brightness(1.12); }
+@media(max-width:460px) { #restart-confirm { padding:20px; } }
+@media(prefers-reduced-motion:reduce) { #restart-confirm * { transition:none!important;animation:none!important; } }

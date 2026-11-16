@@ -55,11 +55,24 @@
     const desired=normalized({x:predicted.x-position.x,y:predicted.y-position.y,z:predicted.z-position.z});
     const current=normalized(velocity);
     const blend=homingBlend(Number(state?.turnSpeed)||4,dt);
-    const blended=normalized({
-      x:current.x+(desired.x-current.x)*blend,
-      y:current.y+(desired.y-current.y)*blend,
-      z:current.z+(desired.z-current.z)*blend
-    });
+    // Linear blending of opposite unit vectors can produce zero velocity at
+    // blend=0.5, or prevent any turn below 0.5. Use a deterministic half-turn
+    // arc only when the directions are nearly antiparallel.
+    const opposite=current.x*desired.x+current.y*desired.y+current.z*desired.z<-0.999;
+    let blended;
+    if(opposite&&blend>0&&blend<1){
+      const sideways=normalized(Math.abs(current.y)<0.9
+        ? {x:-current.z,y:0,z:current.x}
+        : {x:0,y:-current.z,z:current.y});
+      const angle=Math.PI*blend,c=Math.cos(angle),s=Math.sin(angle);
+      blended={x:current.x*c+sideways.x*s,y:current.y*c+sideways.y*s,z:current.z*c+sideways.z*s};
+    }else{
+      blended=normalized({
+        x:current.x+(desired.x-current.x)*blend,
+        y:current.y+(desired.y-current.y)*blend,
+        z:current.z+(desired.z-current.z)*blend
+      });
+    }
     const nextVelocity={x:blended.x*speed,y:blended.y*speed,z:blended.z*speed};
     const progress=updateRocketProgress(distance,Number(state?.lastTargetDistance),Number(state?.noProgress)||0,dt);
     const nextPosition={
