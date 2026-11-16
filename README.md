@@ -22,6 +22,28 @@
 
 **Для разработчиков:** [карта кода](docs/CODE_MAP.md), [архитектура](docs/ARCHITECTURE.md), [порядок доработки](docs/DEVELOPMENT.md), [команды и сценарии проверок](docs/VERIFICATION.md).
 
+## Скриншоты игры
+
+### Нитро среди соперников
+
+![Нитро среди соперников](docs/screenshots/01-nitro-rivals.jpg)
+
+### Пулемётное попадание в машину
+
+![Пулемётное попадание в машину](docs/screenshots/02-gun-hit.jpg)
+
+### Ракетное попадание в машину
+
+![Ракетное попадание в машину](docs/screenshots/03-rocket-hit.jpg)
+
+### Энергетический щит
+
+![Энергетический щит](docs/screenshots/04-energy-shield.jpg)
+
+### Дрифт в Неоновом квартале
+
+![Дрифт в Неоновом квартале](docs/screenshots/05-city-drift.jpg)
+
 ## Возможности
 
 - 3D-графика на Three.js и WebGL.

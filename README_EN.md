@@ -24,6 +24,28 @@ The six opponents share three personality profiles: racer, aggressor and tactici
 
 Combat targets any racer based on range, facing, visibility, race progress and recent attacks. Opponents fire three-shot machine-gun bursts, conserve rockets against shields and check cover before firing. Shots can hit another racer in their path, excluding the shooter. Player scores, kills and combos only credit the player's own eliminations. Respawning opponents briefly resist damage and clear their target and burst.
 
+## Game screenshots
+
+### Nitro among rivals
+
+![Nitro among rivals](docs/screenshots/01-nitro-rivals.jpg)
+
+### Machine-gun hit on an opponent
+
+![Machine-gun hit on an opponent](docs/screenshots/02-gun-hit.jpg)
+
+### Rocket hit on an opponent
+
+![Rocket hit on an opponent](docs/screenshots/03-rocket-hit.jpg)
+
+### Energy shield
+
+![Energy shield](docs/screenshots/04-energy-shield.jpg)
+
+### Drifting through the Neon Quarter
+
+![Drifting through the Neon Quarter](docs/screenshots/05-city-drift.jpg)
+
 ## Controls
 
 | Action | Input |
