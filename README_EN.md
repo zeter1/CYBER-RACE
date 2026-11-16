@@ -8,7 +8,9 @@ CYBER RACE is a browser-based 3D combat racing game built with Three.js/WebGL. C
 
 ## Get started
 
-Download https://github.com/zeter1/CYBER-RACE/archive/refs/heads/main.zip and extract the whole folder. Open `index.html` in a desktop browser. For predictable development behavior, run this command from the project folder:
+**[Play online](https://dkoles.com/Games/cyber-race/index.html)** - no download or installation required.
+
+For a local copy, download https://github.com/zeter1/CYBER-RACE/archive/refs/heads/main.zip and extract the whole folder. Open `index.html` in a desktop browser. For predictable development behavior, run this command from the project folder:
 
 ```sh
 python -m http.server 8000 --bind 127.0.0.1
