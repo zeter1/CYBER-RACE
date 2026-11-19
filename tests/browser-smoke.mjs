@@ -326,18 +326,22 @@ async function run(){
     const glow=world.getObjectByName('road-center-glow');
     const reflectors=world.getObjectByName('road-edge-reflectors');
     const visual=world.children.find(node=>node.userData?.trackId===trackId);
-    const signs=new Set();
-    let flagCount=0,flagsDoubleSided=true,batchesFrontSided=true;
+    const signs=new Set(),flagMaterials=new Set(),instancedMaterials=new Set();
+    let flagCount=0,flagsDoubleSided=true;
     visual?.traverse(node=>{
       if(node.material?.name?.startsWith('track-sign-'))signs.add(node.material.name);
       if(node.name?.startsWith('roadside-flag-')){
         flagCount++;
+         flagMaterials.add(node.material);
         if(node.material?.side!==THREE.DoubleSide)flagsDoubleSided=false;
       }
-      if(node.isInstancedMesh&&node.material?.side!==THREE.FrontSide)batchesFrontSided=false;
+      if(node.isInstancedMesh){
+        for(const material of Array.isArray(node.material)?node.material:[node.material])instancedMaterials.add(material);
+      }
     });
     const row={trackId,themeGroup:visual?.name,markerCount:visual?.userData.visualMarkers,
-      signNames:[...signs],flagCount,flagsDoubleSided,batchesFrontSided,
+      signNames:[...signs],flagCount,flagsDoubleSided,
+      flagMaterialsIndependent:[...flagMaterials].every(material=>!instancedMaterials.has(material)),
       main:main?.isInstancedMesh===true,glow:glow?.isInstancedMesh===true,
       reflectors:reflectors?.isInstancedMesh===true,mainCount:main?.count,
       reflectorsCount:reflectors?.count,sharedGeometry:main?.geometry===glow?.geometry&&main?.geometry===reflectors?.geometry};
@@ -375,7 +379,8 @@ async function run(){
    renderer.dispose();
    return JSON.stringify(rows);
   })()`));
-  for(const row of roadRows){
+   assert.ok(roadRows.some(row=>row.flagCount>0),'roadside flags must be present in the render fixture');
+   for(const row of roadRows){
    assert.ok(row.main&&row.glow&&row.reflectors,'instanced road meshes: '+JSON.stringify(row));
    assert.equal(row.mainCount,20,'one dash every 9 samples');
    assert.equal(row.reflectorsCount,16,'two edge reflectors every 24 samples');
@@ -385,8 +390,8 @@ async function run(){
    assert.ok(row.signNames.length>=1&&row.signNames.every(name=>name.startsWith('track-sign-'+row.trackId+'-')),
      'track-specific signs: '+JSON.stringify(row));
    assert.equal(row.markerCount===0,row.trackId==='valley','decorative marker ownership: '+JSON.stringify(row));
-   assert.ok(row.flagsDoubleSided&&row.batchesFrontSided,
-     'flag clones must not turn batched materials double-sided: '+JSON.stringify(row));
+    assert.ok(row.flagsDoubleSided&&row.flagMaterialsIndependent,
+      'double-sided flags must own separate materials from instanced objects: '+JSON.stringify(row));
    assert.equal(row.highCalls,3,'three batched road draw calls at high quality');
    assert.equal(row.lowCalls,2,'two batched road draw calls at low quality');
    assert.equal(row.gpuGeometriesDuring,1,'shared road geometry is uploaded once');
