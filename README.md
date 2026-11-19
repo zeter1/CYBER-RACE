@@ -24,25 +24,25 @@
 
 ## Скриншоты игры
 
-### Нитро среди соперников
+### Обгон на нитро в Неоновой долине
 
-![Нитро среди соперников](docs/screenshots/01-nitro-rivals.jpg)
+![Обгон на нитро в Неоновой долине](docs/screenshots/01-nitro-overtake.jpg)
 
-### Пулемётное попадание в машину
+### Пулемётная очередь по сопернику
 
-![Пулемётное попадание в машину](docs/screenshots/02-gun-hit.jpg)
+![Пулемётная очередь по сопернику](docs/screenshots/02-machine-gun-tracers.jpg)
 
-### Ракетное попадание в машину
+### Самонаводящаяся ракета в полёте
 
-![Ракетное попадание в машину](docs/screenshots/03-rocket-hit.jpg)
+![Самонаводящаяся ракета в полёте](docs/screenshots/03-homing-rocket-in-flight.jpg)
 
-### Энергетический щит
+### Взрыв машины после попадания ракеты
 
-![Энергетический щит](docs/screenshots/04-energy-shield.jpg)
+![Взрыв машины после попадания ракеты](docs/screenshots/04-rocket-impact-explosion.jpg)
 
-### Дрифт в Неоновом квартале
+### Дрифт с дымом в Неоновом квартале
 
-![Дрифт в Неоновом квартале](docs/screenshots/05-city-drift.jpg)
+![Дрифт с дымом в Неоновом квартале](docs/screenshots/05-neon-drift-smoke.jpg)
 
 ## Возможности
 

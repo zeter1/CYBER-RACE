@@ -26,25 +26,25 @@ Combat targets any racer based on range, facing, visibility, race progress and r
 
 ## Game screenshots
 
-### Nitro among rivals
+### Nitro overtake in Neon Valley
 
-![Nitro among rivals](docs/screenshots/01-nitro-rivals.jpg)
+![Nitro overtake in Neon Valley](docs/screenshots/01-nitro-overtake.jpg)
 
-### Machine-gun hit on an opponent
+### Machine-gun burst hits a rival
 
-![Machine-gun hit on an opponent](docs/screenshots/02-gun-hit.jpg)
+![Machine-gun burst hits a rival](docs/screenshots/02-machine-gun-tracers.jpg)
 
-### Rocket hit on an opponent
+### A homing rocket in flight
 
-![Rocket hit on an opponent](docs/screenshots/03-rocket-hit.jpg)
+![A homing rocket in flight](docs/screenshots/03-homing-rocket-in-flight.jpg)
 
-### Energy shield
+### A rival car explodes after a rocket hit
 
-![Energy shield](docs/screenshots/04-energy-shield.jpg)
+![A rival car explodes after a rocket hit](docs/screenshots/04-rocket-impact-explosion.jpg)
 
-### Drifting through the Neon Quarter
+### A smoky drift through the Neon Quarter
 
-![Drifting through the Neon Quarter](docs/screenshots/05-city-drift.jpg)
+![A smoky drift through the Neon Quarter](docs/screenshots/05-neon-drift-smoke.jpg)
 
 ## Controls
 
