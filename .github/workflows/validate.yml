@@ -54,7 +54,6 @@ jobs:
           node --check tests/contracts.mjs
           node --check tests/drift-mastery.mjs
           node --check tests/slipstream.mjs
-          node --check tests/corner-spotter.mjs
           node --check tests/pilot-tutorial.mjs
           node --check tests/race-contracts.mjs
           node --check src/game/sector-timing.js
@@ -89,9 +88,6 @@ jobs:
 
       - name: Slipstream tactical nitro and anti-farming
         run: node tests/slipstream.mjs
-
-      - name: Corner spotter pure route tests
-        run: node tests/corner-spotter.mjs
 
       - name: Pilot onboarding and controls regressions
         run: node tests/pilot-tutorial.mjs

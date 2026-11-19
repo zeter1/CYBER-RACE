@@ -153,10 +153,11 @@ for(const mode of ['championship','single'])for(const dt of [1/30,1/60,1/144])fo
   const distance=4900/1200+50*dt*.8;
   const botDistance=50*dt*(botEarlier?.1:.95);
   const samples=Array.from({length:600},(_,i)=>({x:20,z:(i<300?i:i-600)*4900/600}));
-  Object.assign(c,{CONFIG,drivingConfig:CONFIG,stepPlayerDriving,resolveDrivingInput,stepOpponentFrame,drivingAudio:{},keys:{},touchInput:{},gamepadInput:{},isGameplayInputBlocked:()=>false,
+  Object.assign(c,{CONFIG,drivingConfig:CONFIG,stepPlayerDriving,resolveDrivingInput,stepOpponentFrame,drivingAudio:{},keys:{},touchInput:{},gamepadInput:{},settings:{touchAutoThrottle:false},isGameplayInputBlocked:()=>false,
     canControl:()=>c.gameStarted&&!c.gameFinished&&!c.paused,difficulty:()=>({regen:1,botSpeed:1}),
     findClosest:(x,z,i)=>findClosestSample(samples,x,z,i,40,45),samples,tangents:Array(600).fill(tangent),
-    playerCar:{group:node(),wheels:[]},playerShieldMesh:node(),pickupSweepStart:{copy(p){this.x=p.x;this.z=p.z;return this;}},sweptVehicleContact2D,performance:{now:()=>100},raceStartHint:false,nitroFxTimer:0,
+    playerCar:{group:node(),wheels:[]},playerShieldMesh:node(),pickupSweepStart:{copy(p){this.x=p.x;this.z=p.z;return this;}},sweptVehicleContact2D,performance:{now:()=>100},raceStartHint:false,
+    combatEffects:{updateDriving(){}},tireOnAsphalt:()=>true,
     totalLength:4900,bonusMeshes:[],projectiles:[],planOpponentTactics:()=>({}),
     trackCurve:{getTangentAt:()=>tangent,getPointAt:t=>({x:20,z:t*4900})},camera:{position:{}},
     THREE:{MathUtils:{clamp:n=>n},Vector3:class{constructor(x,y,z){Object.assign(this,{x,y,z});}normalize(){return this;}}},Math:Object.assign(Object.create(Math),{random:()=>.5})});

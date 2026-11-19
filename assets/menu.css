@@ -1,7 +1,11 @@
 /* Shared pit-stop styling for the main menu and pause. Gameplay HUD lives in hud.css. */
+:root { --pit-stop-art:url("menu-pit-stop.png"); }
+@supports (background-image:image-set(url("menu-pit-stop.webp") type("image/webp"))) {
+  :root { --pit-stop-art:image-set(url("menu-pit-stop.webp") type("image/webp"),url("menu-pit-stop.png") type("image/png")); }
+}
 .menu-icons { position:absolute; width:0; height:0; overflow:hidden; }
 #start-screen { display:block; padding:0; background:#0c0e1d; backdrop-filter:none; overscroll-behavior:contain; color:#f5f6ff; }
-#start-screen::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg,rgba(8,10,23,.03) 35%,rgba(8,10,23,.55)),url("menu-pit-stop.png") center top / cover no-repeat; pointer-events:none; }
+#start-screen::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg,rgba(8,10,23,.03) 35%,rgba(8,10,23,.55)),var(--pit-stop-art) center top / cover no-repeat; pointer-events:none; }
 #start-screen .start-shell { position:relative; width:min(100%,1720px); min-height:100%; margin:auto; padding:22px clamp(22px,3.4vw,56px) 14px; }
 :is(#start-screen,#pause-menu) svg { width:26px; height:26px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 .menu-header { display:flex; align-items:center; justify-content:space-between; gap:20px; min-height:38px; }
@@ -149,7 +153,7 @@
 }
 @media (max-width:760px) {
   #start-screen .start-shell { padding:16px; }
-  #start-screen::before { background:linear-gradient(90deg,rgba(8,10,23,.7),rgba(8,10,23,.1)),linear-gradient(0deg,#0c0e1d 10%,transparent 65%),url("menu-pit-stop.png") 64% top / auto 700px no-repeat; }
+  #start-screen::before { background:linear-gradient(90deg,rgba(8,10,23,.7),rgba(8,10,23,.1)),linear-gradient(0deg,#0c0e1d 10%,transparent 65%),var(--pit-stop-art) 64% top / auto 700px no-repeat; }
   .menu-header { align-items:flex-start; gap:12px; }
   .menu-brand { gap:10px; font-size:16px; flex-wrap:wrap; white-space:normal; }
   .menu-brand b { margin:0 5px; }
@@ -208,7 +212,7 @@
 
 /* Pause uses the same panels, keycaps and controls as the starting screen. */
 #pause-menu { display:block; padding:0; background:#0c0e1d; backdrop-filter:none; overscroll-behavior:contain; }
-#pause-menu::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg,rgba(8,10,23,.25),rgba(8,10,23,.9) 90%),url("menu-pit-stop.png") center top / cover no-repeat; pointer-events:none; }
+#pause-menu::before { content:""; position:fixed; inset:0; background:linear-gradient(180deg,rgba(8,10,23,.25),rgba(8,10,23,.9) 90%),var(--pit-stop-art) center top / cover no-repeat; pointer-events:none; }
 .pause-shell { position:relative; width:min(100%,1480px); min-height:100%; margin:auto; padding:22px clamp(22px,3.4vw,56px) 20px; }
 .pause-hero { position:relative; display:flex; align-items:center; min-height:310px; padding:28px 0 34px; }
 .pause-copy { width:min(55%,650px); }
@@ -237,7 +241,7 @@
 }
 @media (max-width:760px) {
   .pause-shell { padding:16px; }
-  #pause-menu::before { background:linear-gradient(90deg,rgba(8,10,23,.7),rgba(8,10,23,.35)),linear-gradient(0deg,#0c0e1d 10%,transparent 65%),url("menu-pit-stop.png") 64% top / auto 700px no-repeat; }
+  #pause-menu::before { background:linear-gradient(90deg,rgba(8,10,23,.7),rgba(8,10,23,.35)),linear-gradient(0deg,#0c0e1d 10%,transparent 65%),var(--pit-stop-art) 64% top / auto 700px no-repeat; }
   .pause-hero { min-height:330px; padding:28px 0 52px; }
   .pause-copy { width:100%; }
   .pause-eyebrow { font-size:10px; letter-spacing:1.5px; }

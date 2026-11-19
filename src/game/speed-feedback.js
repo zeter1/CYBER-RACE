@@ -19,12 +19,10 @@
     const reduced=Boolean(input.reducedMotion);
     return {
       speed,boost,
-      fov:reduced?58:58+12*cruise+9*over+2*boost,
-      // Closer, lower rear-quarter chase view: the player's car is easier to read
-      // without losing the track ahead. Speed effects remain presentation-only.
-      back:reduced?19:18.5+1.5*cruise+0.5*over,
-      height:reduced?8:8-0.6*cruise,
-      lookAhead:reduced?13:13-1.5*cruise,
+      fov:reduced?58:58+6*cruise+4*over+2*boost,
+      back:reduced?12.8:12.8+0.9*cruise+0.6*over,
+      height:reduced?4.45:4.45-0.25*cruise,
+      lookAhead:reduced?14:14-1.2*cruise,
       flow:reduced?0:smooth(0.3,1.3,speed)*(0.75+0.25*boost),
       vibration:!reduced&&input.cameraShake?smooth(0.65,1.65,speed)*(0.018+0.012*boost):0
     };
@@ -32,16 +30,20 @@
 
   // Pure camera targeting: switch viewpoints without touching steering or physics.
   // In a rear glance the camera sits in front of the car and looks behind it.
-  function cameraViewPose(player,view,rear=false){
+  function cameraViewPose(player,view=stepSpeedFeedback(null,{active:false},0),rear=false,aspect=16/9){
     const fx=Math.sin(player.heading),fz=Math.cos(player.heading);
-    const direction=rear?-1:1,side=rear?-2:2.4;
-    const distance=rear?Math.max(14,view.back*0.82):view.back;
-    const height=rear?view.height*0.9:view.height;
+    const direction=rear?-1:1,side=rear?-2:0;
+    // Keep the car in frame in portrait and above the bottom-center touch HUD.
+    const narrow=1-smooth(0.48,1.3,aspect);
+    const distance=(rear?16:view.back)+7.5*narrow;
+    const height=rear?7.2+1.35*narrow:view.height+2.25*narrow;
+    const lookAhead=(rear?12:view.lookAhead)-5*narrow;
+    const lookHeight=rear?1.65:0.45+1.2*narrow;
     return {
       position:{x:player.x-direction*fx*distance+fz*side,
         y:player.y+height,z:player.z-direction*fz*distance-fx*side},
-      look:{x:player.x+direction*fx*view.lookAhead+fz*direction*0.25,
-        y:player.y+1.65,z:player.z+direction*fz*view.lookAhead-fx*direction*0.25}
+      look:{x:player.x+direction*fx*lookAhead,
+        y:player.y+lookHeight,z:player.z+direction*fz*lookAhead}
     };
   }
 

@@ -18,7 +18,7 @@
     return {
       completedLap,lapTime,bestLap:nextBest,
       lap:finished?completedLap:completedLap+1,curLap:0,finished,
-      grantCombatPack:completedLap%3===0&&completedLap<total,scoreDelta:50
+      grantLapBonus:completedLap%3===0&&completedLap<total,scoreDelta:50
     };
   }
 

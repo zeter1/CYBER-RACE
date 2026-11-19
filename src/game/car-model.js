@@ -10,15 +10,16 @@
     reflectionCanvas.width=512;reflectionCanvas.height=256;
     const ctx=reflectionCanvas.getContext('2d');
     const sky=ctx.createLinearGradient(0,0,0,256);
-    sky.addColorStop(0,'#d8e5f5');sky.addColorStop(0.45,'#65758a');
-    sky.addColorStop(0.52,'#202633');sky.addColorStop(1,'#0c1018');
+    sky.addColorStop(0,'#c5d4e7');sky.addColorStop(0.38,'#78879a');
+    sky.addColorStop(0.49,'#4b5664');sky.addColorStop(0.6,'#343741');
+    sky.addColorStop(1,'#1c2028');
     ctx.fillStyle=sky;ctx.fillRect(0,0,512,256);
-    for(const x of [50,260,430]){
-      const strip=ctx.createLinearGradient(x-35,0,x+35,0);
-      strip.addColorStop(0,'rgba(245,249,255,0)');
-      strip.addColorStop(0.5,'rgba(245,249,255,0.9)');
-      strip.addColorStop(1,'rgba(245,249,255,0)');
-      ctx.fillStyle=strip;ctx.fillRect(x-35,15,70,110);
+    for(const [x,y,radius] of [[86,57,78],[310,61,92]]){
+      const reflection=ctx.createRadialGradient(x,y,0,x,y,radius);
+      reflection.addColorStop(0,'rgba(244,249,255,.78)');
+      reflection.addColorStop(.52,'rgba(224,235,252,.35)');
+      reflection.addColorStop(1,'rgba(224,235,252,0)');
+      ctx.fillStyle=reflection;ctx.fillRect(x-radius,y-radius,radius*2,radius*2);
     }
     // Shared across all cars; Three.js caches the filtered reflection map.
     const reflection=new THREE.CanvasTexture(reflectionCanvas);
@@ -30,9 +31,10 @@
     const alloy=standard(0xa3aebb,0.25,0.9);
     const brake=standard(0x555b64,0.65,0.8);
     const caliper=standard(0xc52c25,0.4,0.4);
-    const glass=new THREE.MeshPhysicalMaterial({color:0x07121d,roughness:0.09,metalness:0.55,clearcoat:1,clearcoatRoughness:0.06,envMap:reflection,envMapIntensity:0.7,side:THREE.DoubleSide});
+    const glass=new THREE.MeshPhysicalMaterial({color:0x101b27,roughness:0.23,metalness:0.27,clearcoat:0.85,clearcoatRoughness:0.12,envMap:reflection,envMapIntensity:1,side:THREE.DoubleSide});
     const lamp=(color,intensity)=>new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:intensity,roughness:0.23,metalness:0.15});
-    const headlamp=lamp(0x8efaff,2.2),tailLamp=lamp(0xff2029,1.8),amber=lamp(0xff9a24,0.7);
+    const headlamp=lamp(0xc6ecff,1.45),tailLamp=lamp(0xff2737,1.3),amber=lamp(0xff9a24,0.7);
+    const tailLens=standard(0x4a0913,0.31,0.15);
     const rimMetal=standard(0x455563,0.25,0.88),hardware=standard(0x738694,0.3,0.8);
     const cyan=lamp(0x39e4df,0.8);
     const v=p=>new THREE.Vector3(...p);
@@ -78,8 +80,9 @@
       const end=Math.pow(Math.abs(z)/2.24,5);
       const archDistance=Math.min(Math.abs(z+1.4),Math.abs(z-1.4));
       const arch=archDistance<0.46?0.38+Math.sqrt(0.46**2-archDistance**2):0.29;
-      const width=0.99-0.14*end+0.035*Math.exp(-Math.pow(archDistance/0.5,2));
-      const top=0.91-0.22*end,shoulder=Math.max(top-0.025,arch+0.065),lower=Math.max(0.29,arch);
+      const flare=(z>0?0.15:0.09)*Math.exp(-Math.pow(archDistance/0.57,2));
+      const width=0.97-0.10*end+flare;
+      const top=0.91-0.20*end+flare*0.22,shoulder=Math.max(top-0.025,arch+0.065),lower=Math.max(0.29,arch);
       return {width,top,shoulder,lower};
     }
     function sideSurfaceX(z,y){
@@ -128,7 +131,8 @@
     function createCar(color,isPlayer=false){
       const group=new THREE.Group();group.name='GT combat coupe';group.scale.setScalar(1.9);
       const fixed=new THREE.Group();group.add(fixed);
-      const paint=new THREE.MeshPhysicalMaterial({color,metalness:0.48,roughness:0.21,clearcoat:1,clearcoatRoughness:0.1,envMap:reflection,envMapIntensity:0.7});
+      const paint=new THREE.MeshPhysicalMaterial({color,metalness:0.36,roughness:0.29,clearcoat:0.85,clearcoatRoughness:0.22,envMap:reflection,envMapIntensity:0.86});
+      const exhaustOutlets=[];
       bodyShell(fixed,paint);
       box(fixed,[1.65,0.12,3.7],trim,[0,0.26,0]);
       // Curved painted roof, separate glazing and structural pillars.
@@ -156,37 +160,43 @@
           const points=[];
           for(let i=0;i<=20;i++){
             const a=i/20*Math.PI;
-            points.push([s(1.016),0.38+Math.sin(a)*0.465,z+Math.cos(a)*0.465]);
+            const y=0.38+Math.sin(a)*0.466,along=z+Math.cos(a)*0.466;
+            points.push([s(sideSurfaceX(along,y)+0.006),y,along]);
           }
-          line(fixed,points,0.018,paint);
+          line(fixed,points,0.014,paint);
         }
         // Hood louvres, brake inlet and side indicators.
         for(let i=0;i<4;i++)box(fixed,[0.24,0.012,0.035],trim,[s(0.58),0.926,-1.25+i*0.09]);
         box(fixed,[0.022,0.14,0.33],trim,[s(0.999),0.65,0.78],[0,side*0.08,0]);
         box(fixed,[0.024,0.035,0.13],amber,[s(1.015),0.7,-1.94]);
         // Recessed lamp housings with a pair of LED blades.
-        box(fixed,[0.58,0.16,0.085],trim,[s(0.57),0.66,-2.2],[0,side*-0.1,0]);
-        for(const y of [0.635,0.685])box(fixed,[0.47,0.018,0.018],headlamp,[s(0.57),y,-2.252],[0,side*-0.1,0]);
-        box(fixed,[0.64,0.12,0.07],trim,[s(0.55),0.68,2.21]);
-        box(fixed,[0.53,0.026,0.018],tailLamp,[s(0.55),0.7,2.253]);
-        box(fixed,[0.53,0.018,0.018],tailLamp,[s(0.55),0.65,2.253]);
-        // Twin exhausts, hollow black outlets and rear wing brackets.
-        mesh(fixed,new THREE.CylinderGeometry(0.075,0.075,0.17,16),alloy,[s(0.65),0.39,2.22],[Math.PI/2,0,0]);
-        mesh(fixed,new THREE.CircleGeometry(0.059,16),trim,[s(0.65),0.39,2.31]);
-        box(fixed,[0.055,0.29,0.12],trim,[s(0.62),1.055,1.84],[0.15,0,0]);
+        beveled(fixed,[0.58,0.15,0.09],trim,[s(0.57),0.66,-2.23]);
+        for(const x of [0.415,0.57,0.725])beveled(fixed,[0.115,0.032,0.023],headlamp,[s(x),0.668,-2.284]);
+        beveled(fixed,[0.65,0.16,0.065],trim,[s(0.52),0.646,2.241]);
+        beveled(fixed,[0.565,0.112,0.023],tailLens,[s(0.52),0.646,2.272]);
+        beveled(fixed,[0.49,0.026,0.014],tailLamp,[s(0.52),0.663,2.284]);
+        beveled(fixed,[0.031,0.062,0.014],tailLamp,[s(0.75),0.646,2.284]);
+        // The rim is separate from the dark inner wall and recessed end of the pipe.
+        const exhaust=[s(0.64),0.398,2.29];
+        mesh(fixed,new THREE.CylinderGeometry(0.086,0.086,0.12,16,1,true).rotateX(Math.PI/2),rimMetal,exhaust);
+        const outlet=new THREE.Vector3(exhaust[0],exhaust[1],2.35);
+        exhaustOutlets.push(outlet);
+        mesh(fixed,new THREE.TorusGeometry(0.077,0.011,6,16),alloy,outlet.toArray());
+        mesh(fixed,new THREE.CircleGeometry(0.082,16),trim,[exhaust[0],exhaust[1],2.315]);
+        strut(fixed,[s(0.62),0.761,1.79],[s(0.62),1.196,1.88],0.04,trim);
       }
       box(fixed,[1.9,0.045,0.28],trim,[0,0.29,-2.19]);
       box(fixed,[0.87,0.19,0.035],trim,[0,0.475,-2.245]);
       for(let i=-3;i<=3;i++)box(fixed,[0.013,0.13,0.015],alloy,[i*0.11,0.475,-2.269]);
-      box(fixed,[1.57,0.12,0.3],trim,[0,0.31,2.12],[-0.12,0,0]);
-      for(let i=-2;i<=2;i++)box(fixed,[0.025,0.18,0.34],trim,[i*0.24,0.3,2.17]);
-      box(fixed,[1.9,0.045,0.31],trim,[0,1.21,1.87],[0.07,0,0]);
-      for(const x of [-0.95,0.95])box(fixed,[0.035,0.14,0.35],paint,[x,1.24,1.87]);
-      // Faceted widebody details remain fixed and share the same paint material.
+      beveled(fixed,[0.32,0.028,0.026],rimMetal,[0,0.64,2.251]);
+      beveled(fixed,[1.73,0.17,0.16],paint,[0,0.461,2.218],[0.14,0,0]);
+      beveled(fixed,[1.59,0.15,0.25],trim,[0,0.337,2.165],[-0.12,0,0]);
+      for(const x of [-0.33,-0.16,0.16,0.33])beveled(fixed,[0.036,0.125,0.25],trim,[x,0.315,2.18],[-0.15,0,0]);
+      beveled(fixed,[1.9,0.058,0.32],trim,[0,1.21,1.87],[0.07,0,0]);
+      for(const x of [-0.95,0.95])beveled(fixed,[0.04,0.116,0.34],paint,[x,1.235,1.87],[0.07,0,0]);
       for(const side of [-1,1]){
-        for(const z of [-1.4,1.4])fender(fixed,side,z,paint);
         beveled(fixed,[.13,.1,1.78],trim,[side*1.04,.3,.02]);
-        beveled(fixed,[.025,.035,1.5],cyan,[side*1.112,.33,.03]);
+        beveled(fixed,[.016,.02,1.18],cyan,[side*1.105,.33,.03]);
       }
       // Sloping scoop with a deep intake, rather than stacked solid blocks.
       const scoop=new THREE.BufferGeometry();
@@ -305,7 +315,7 @@
         const weapon=rocket?rocketLauncher:machineGun;weapon.updateWorldMatrix(true,false);
         return weapon.localToWorld(target.set(0,0,weapon.userData.muzzleZ));
       }
-      return {group,wheels,weaponGroup,rocketLauncher,machineGun,setAppearance,getMuzzle};
+      return {group,wheels,exhaustOutlets,weaponGroup,rocketLauncher,machineGun,setAppearance,getMuzzle};
     }
     createCar.environmentMap=reflection;
     return createCar;

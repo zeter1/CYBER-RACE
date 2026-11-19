@@ -8,11 +8,12 @@ const {stepPlayerDriving}=require('../src/game/player-driving.js');
 const {resolveDrivingInput}=require('../src/game/control-input.js');
 const {resolveLapCompletion,sweptVehicleContact2D,singleRaceFinishOrder}=require('../src/game/race-state.js');
 const hud=require('../src/ui/hud-model.js');
-const {canBenefitFromPickup}=require('../src/game/pickup-rules.js');
+const {applyPickup}=require('../src/game/pickup-rules.js');
 const {createRaceContractTracker}=require('../src/game/race-contracts.js');
 const {createSectorTimer,formatSectorTime,formatSectorDelta}=require('../src/game/sector-timing.js');
 const {createLapGhostTracker,createLapGhostStore}=require('../src/game/lap-ghost.js');
 const {measureFrameRate}=require('../src/game/frame-quality.js');
+const {cameraViewPose}=require('../src/game/speed-feedback.js');
 const {CAR_PROFILES,normalizeGarage,playerConfig,loadGarage,saveGarage,createGarageRecords,createTuningStore,normalizeBuild,buildProfile,normalizeTuning,buildKey,buildLabel,loadTuning}=api;
 // Config IIFE only registers constants; no browser, storage, timers or network.
 const configContext={};vm.runInNewContext(fs.readFileSync(new URL('../src/game/config.js',import.meta.url),'utf8'),configContext);
@@ -107,21 +108,22 @@ function fixture(classId){
     player:{pos:new Vector(),heading:0,speed:0,speedLat:0,steerAngle:0,health:profile.maxHealth,maxHealth:profile.maxHealth,maxSpeed:profile.driving.MAX_SPEED,regenDelay:0,score:0,comboTimer:0,shieldTimer:0,resetCooldown:0,damageCooldown:0,pulseCooldown:0,curLap:0,totalTime:0,prevT:0,wrongWayTimer:0,stuckTimer:0,driftTime:0,nitroTimer:0,speedBoostTimer:0,invincibleTimer:0},
     selectedGarage:{classId,paintId:'red'},activeGarage:{classId,paintId:'red'},activeBuild:normalizeBuild(classId),activeProfile:profile,drivingConfig:playerConfig(CONFIG,classId),
     tuning:createTuningStore(storage()),creditedRaceEvents:new Set(),
-    canBenefitFromPickup,selectedRaceContract:'none',raceContractTracker:createRaceContractTracker(),
+    applyPickup,selectedRaceContract:'none',raceContractTracker:createRaceContractTracker(),
     sectorTimer:createSectorTimer(),lapGhost:createLapGhostTracker(),lapGhostStore:createLapGhostStore(storage()),currentTrackId:'valley',buildKey,lapGhostRecordResult:null,formatSectorTime,formatSectorDelta,lastSectorNotice:null,
     raceContractNoticeEl:element(),contractGoalAnnounced:false,contractNoticeAt:-Infinity,
     garage:{isOpen:()=>false},gameStarted:true,gameFinished:false,lastRaceWon:false,paused:false,menuOpen:false,keys:{},
     playerCar:model(),playerShieldMesh:{position:new Vector(),rotation:{y:0},material:{}},samples:[new Vector()],tangents:[new Vector(0,0,1)],
     startPerp:new Vector(1,0,0),startGrid:[{t:0,offset:0}],opponents:[],bonusMeshes:[],projectiles:[],
     garageRecords:createGarageRecords(storage()),recordInfoEl:element(),recordStorageNote:element(),
-    canControl:()=>true,isGameplayInputBlocked:()=>false,stepPlayerDriving,resolveDrivingInput,touchInput:{},gamepadInput:{},resolveLapCompletion,sweptVehicleContact2D,
+    canControl:()=>true,isGameplayInputBlocked:()=>false,stepPlayerDriving,resolveDrivingInput,touchInput:{},gamepadInput:{},settings:{},resolveLapCompletion,sweptVehicleContact2D,
     pickupSweepStart:new Vector(),driftMastery:createDriftMastery(),slipstreamTracker:{interrupt(){},reset(){},step(){return null;},view(){return {visible:false,progress:0,rewarded:false};}},overtakeTracker:{interrupt(){},reset(){},contact(){},getSeriesStatus(){return {active:false};}},lastOvertakeNotice:null,segmentSphereHit:require('../src/weapons/geometry.js').segmentSphereHit3D,
     difficulty:()=>({regen:1}),findClosest:()=>({idx:0,t:0,dist:0}),findSafeRespawnIndex:()=>0,
     speedFeedback:{reset(){}},clearHostileProjectilesNear(){},blockGameplayInput(){},beginPlayerDeath(){},
     clearInputs(){},clearBonusRespawnTimers(){},setGameplayCursor(){},clearShockwaves(){},beginCountdown(){},updateUI(){},updateRecordInfo(){},focusGameCanvas(){},
-    updateWeaponVis(){},showMessage(){},combatEffects:{clear(){}},skids:{skids:[],pool:[]},minimap:{render(){}},
+    updateWeaponVis(){},showMessage(){},combatEffects:{clear(){},resetDriving(){},updateDriving(){}},
+    tireOnAsphalt:()=>true,minimap:{render(){}},
     damageOverlayTimer:null,damageOverlay:element(),speedVignetteEl:element(),incomingWarningEl:element(),wrongWayEl:element(),hitMarkerEl:element(),comboDisplayEl:element(),finishScreen:element(),finishTitle:element(),finishStats:element(),startScreen:element(),pauseMenu:element(),
-    camera:{updateProjectionMatrix(){}},camCur:new Vector(),lookCur:new Vector(),performance:{now:()=>100},nitroFxTimer:0,
+    camera:{updateProjectionMatrix(){}},cameraViewPose,camCur:new Vector(),lookCur:new Vector(),cameraAnchor:new Vector(),performance:{now:()=>100},nitroFxTimer:0,
     bonusData:{health:{icon:'+',name:'heal',emissive:0}},audio:{play(){}},particles:{spawn(){}},removeBonusAt(index){context.bonusMeshes.splice(index,1);}
   };
   for(const name of ['driftFeedbackEl','driftLabelEl','driftPointsEl','driftProgressEl','speedEl','speedNeedleEl','speedArcEl','lapEl','currTimeEl','bestTimeEl','rocketCountEl','gunAmmoEl','nitroChargesEl','pulseCooldownEl','pulseSlotEl','scoreEl','healthBar','healthTextEl','shieldStatusEl','shieldBarEl','effectNameEl','effectStatusEl','effectRowEl','nitroBar','posEl','raceProgressEl','rivalGapEl','rivalGapLabelEl','rivalGapValueEl','rivalGapTrendEl','overtakeSeriesEl','overtakeMultiplierEl','overtakeNextEl','overtakeTimeEl','overtakeBarEl','overtakeNoticeEl','raceContractHudEl','raceContractTitleEl','raceContractProgressEl','sectorTimingEl','sectorCurrentEl','sectorDeltaEl','sectorDetailEl'])context[name]=element();
@@ -136,15 +138,21 @@ function fixture(classId){
 for(const id of ['universal','interceptor','armored']){
   const c=fixture(id),cap=CAR_PROFILES[id].maxHealth;
   // Actual runtime owner: heal pickup -> manual return -> regeneration -> death/revive.
-  c.player.health=cap-10;c.bonusMeshes.push({type:'health',group:{position:new Vector()}});c.checkBonuses();assert.equal(c.player.health,cap,id+' pickup cap');assert.equal(c.bonusMeshes.length,0);
+  c.player.health=cap-10;c.bonusMeshes.push({type:'health',group:{position:new Vector()}});c.checkBonuses();assert.equal(c.player.health,cap+30,id+' overhealth from pickup');assert.equal(c.bonusMeshes.length,0);
+  c.respawnPlayer('manual');assert.equal(c.player.health,cap+30,id+' manual reset preserves overhealth');
   c.player.health=cap-20;c.player.regenDelay=4;c.respawnPlayer('manual');assert.equal(c.player.health,cap-20,id+' manual reset must not heal');assert.equal(c.player.regenDelay,4);
   c.player.health=cap-.01;c.player.regenDelay=0;c.updatePlayer(.075);assert.equal(c.player.health,cap,id+' regen cap');
-  c.player.health=0;c.player.destroyed=true;c.player.deathTimer=.01;c.updatePlayer(.075);assert.equal(c.player.health,cap,id+' revive cap');assert.equal(c.player.destroyed,false);
+  Object.assign(c.player,{health:0,destroyed:true,deathTimer:.01,lap:2,prevT:.85,crossedHalf:true,rockets:12,gunAmmo:160});
+  c.player.pos.set(140,0,145);c.updatePlayer(.075);
+  assert.equal(c.player.health,cap,id+' revive cap');assert.equal(c.player.destroyed,false);
+  assert.deepEqual([c.player.pos.x,c.player.pos.z,c.player.prevT,c.player.lap,c.player.crossedHalf,c.player.rockets,c.player.gunAmmo],
+    [0,0,0,2,false,12,160],id+' revive at finish, same lap and collected ammo');
   c.player.health=cap-1;c.player.lap=3;c.player.curLap=45;c.player.bestLap=Infinity;c.completeLap();assert.equal(c.player.health,cap,id+' lap heal cap');
   c.lastOvertakeNotice={event:{risky:true,points:50,bonusPoints:20},time:8};
   c.window.restartGame();assert.equal(c.lastOvertakeNotice,null,id+' restart clears old pass notice');
   assert.equal(c.overtakeSeriesEl.hidden,true,id+' restart hides inactive pass chain');
   assert.equal(c.player.health,cap,id+' new race health');assert.equal(c.player.maxSpeed,c.drivingConfig.MAX_SPEED);
+  assert.deepEqual([c.player.rockets,c.player.gunAmmo],[0,0],id+' fresh race has no weapons');
   c.updateUI();assert.equal(c.healthTextEl.textContent,cap,id+' HUD shows actual HP');assert.equal(c.healthBar.style.width,'100%');assert.equal(c.healthBar.parentElement.attributes['aria-valuemax'],String(cap));
   c.player.health=cap/2;c.updateUI();assert.equal(c.healthTextEl.textContent,cap/2);assert.equal(c.healthBar.style.width,'50%');assert.equal(c.healthBar.parentElement.attributes['aria-valuenow'],String(cap/2));
 }
@@ -350,7 +358,7 @@ assert.ok(tuned.drivingConfig.STEER_RESPONSE>CONFIG.STEER_RESPONSE*.8);
 assert.ok(tuned.drivingConfig.GRIP<CONFIG.GRIP);
 tuned.player.health=151;
 tuned.bonusMeshes.push({type:'health',group:{position:new Vector()}});
-tuned.checkBonuses();assert.equal(tuned.player.health,161);
+tuned.checkBonuses();assert.equal(tuned.player.health,191);
 tuned.player.health=150;tuned.player.regenDelay=0;tuned.updatePlayer(.075);
 assert.ok(tuned.player.health<=161);
 tuned.respawnPlayer('revive');assert.equal(tuned.player.health,161);
@@ -674,7 +682,7 @@ function countdownAfterFourSeconds(fps){
     drivingConfig:{MAX_SPEED:52},canControl:()=>true,drivingAudio:{},
     updatePlayer(){},updateOpponents(){},updateSlipstream(){},updateOvertakes(){},checkBonuses(){},handleShooting(){},updateProjectiles(){},
     particles:{update(){}},skids:{update(){}},updateShockwaves(){},pickupFactory:{update(){}},bonusMeshes:[],
-    sun:{position:{set(){}},target:{position:{copy(){}},updateMatrixWorld(){}}},
+    placeTrackLight(){},
     scenery:{update(){}},sceneryMotionPreference:{matches:false},speedFeedback:{update(){}},
     minimap:{render(){}},updateUI(){},scene:{},camera:{},combatRenderer:{render(){}},settings:{quality:'high',lapGhost:true},
     qualityMode:'high',lapGhost:{poseAt(){return null;},paceAt(){return null;},snapshot(){return {bestTime:null};}},lapGhostBadge:element(),lapGhostBadgeTime:element(),lapGhostBadgePace:{textContent:'',dataset:{}},lapGhostPaceLastTime:-Infinity,lapGhostPaceDelta:null,lapGhostVisual:{update(){}}

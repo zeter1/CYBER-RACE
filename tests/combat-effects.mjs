@@ -1,6 +1,63 @@
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
 const require=createRequire(import.meta.url);
+{
+  const threeSource=readFileSync(new URL('../vendor/three/three.module.js',import.meta.url));
+  const THREE=await import('data:text/javascript;base64,'+threeSource.toString('base64'));
+  require('../src/game/combat-effects.js');
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera();
+  const ctx={createRadialGradient:()=>({addColorStop(){}}),fillRect(){},putImageData(){},
+    getImageData:()=>({data:new Uint8ClampedArray(128*128*4)})};
+  const effects=globalThis.CyberRace.game.createCombatEffects({THREE,scene,camera,
+    document:{createElement:()=>({getContext:()=>ctx})}});
+  const group=new THREE.Group();
+  scene.add(group);
+  const car={group,exhaustOutlets:[new THREE.Vector3(-.64,.398,2.35),new THREE.Vector3(.64,.398,2.35)],
+    wheels:[-1,1].map(x=>{
+      const wheel=new THREE.Group();
+      wheel.position.set(x,.38,1.4);group.add(wheel);
+      return {group:wheel,isFront:false};
+    })};
+  const state={nitro:true,drifting:true,speed:60,speedLat:9,isAsphalt:point=>point.x<0};
+  const dt=1/60;
+  const drive=()=>{effects.updateDriving(car,state,dt);effects.update(dt);};
+  assert.equal(typeof effects.updateDriving,'function','driving effects must consume the live vehicle pose');
+  drive();
+  const jets=car.exhaustOutlets.map(outlet=>group.children.find(node=>node.isMesh&&node.position.equals(outlet)));
+  assert.ok(jets.every(jet=>jet?.visible),'both flames must start at the outlets');
+  group.scale.set(1.82,1.8,1.98);
+  group.rotation.y=.18;
+  group.position.z=-5;
+  drive();
+  for(const [i,jet] of jets.entries()){
+    assert.ok(jet.getWorldPosition(new THREE.Vector3()).distanceTo(group.localToWorld(car.exhaustOutlets[i].clone()))<1e-6,
+      'moving and scaling the vehicle must carry the flame base with it');
+  }
+  const smoke=scene.children.find(node=>node.name==='Tire smoke');
+  assert.ok(smoke.geometry.instanceCount>=2,'each slipping rear tire emits particles');
+  const tint=smoke.geometry.attributes.tint;
+  const types=new Set(Array.from({length:smoke.geometry.instanceCount},(_,i)=>tint.getX(i)>tint.getZ(i)?'dust':'smoke'));
+  assert.deepEqual(types,new Set(['smoke','dust']),'one tire on the shoulder emits dust while the other emits smoke');
+  const marks=scene.children.find(node=>node.name==='Tire marks');
+  assert.ok(marks.geometry.drawRange.count>0);
+  for(let i=0;i<marks.geometry.instanceCount;i++){
+    assert.ok(marks.geometry.attributes.markStart.getX(i)<0&&marks.geometry.attributes.markEnd.getX(i)<0,
+      'rubber marks stay on the asphalt side of the test road');
+  }
+  const emitted=smoke.geometry.instanceCount;
+  effects.resetDriving();
+  group.position.z=-400;
+  state.nitro=false;
+  drive();
+  assert.equal(smoke.geometry.instanceCount,emitted,'reset discards the path across a respawn');
+  assert.ok(jets.every(jet=>!jet.visible),'reset hides the flame');
+  effects.clear();
+  assert.equal(smoke.geometry.instanceCount,0);
+  assert.equal(marks.geometry.drawRange.count,0);
+  console.log('DRIVING_VFX PASS moving flames, split road surfaces, world-space marks, reset');
+}
 const {segmentSphereEntry3D,segmentBoxHit3D,createObstacleIndex}=require('../src/weapons/geometry.js');
 const point=(x,y,z)=>({x,y,z});
 const box={x:0,y:1,z:0,w:2,h:2,d:4,rotation:0,surface:'metal'};

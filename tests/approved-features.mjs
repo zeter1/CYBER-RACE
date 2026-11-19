@@ -10,7 +10,7 @@ const {createOvertakeTracker}=require('../src/game/overtake-events.js');
 const {createDriftMastery}=require('../src/game/drift-mastery.js');
 const {createSectorTimer}=require('../src/game/sector-timing.js');
 const {createLapGhostTracker,createLapGhostStore}=require('../src/game/lap-ghost.js');
-const {sweepCarObstacle2D}=require('../src/game/track-environment.js');
+const {createTrackEnvironment,sweepCarObstacle2D}=require('../src/game/track-environment.js');
 
 const storage=(initial={})=>{
  const data=new Map(Object.entries(initial));
@@ -73,6 +73,15 @@ assert.equal(checkpoint.save(match,sample),true,'checkpoint persisted and read b
 const restored=createStageCheckpoint(s).load(match);
 assert.equal(restored.player.lap,2);
 assert.equal(restored.player.gunAmmo,63);
+const stackedStore=createStageCheckpoint(storage());
+const stacked={
+ ...sample,player:{...player,rockets:308,gunAmmo:902,nitro:160,health:560,shieldTimer:9999,speedBoostTimer:5000},
+ bots:bots.map(bot=>({...bot,rockets:99,gunAmmo:300,nitroCharges:40,health:340,shieldTimer:4600,speedBoostTimer:5000}))
+};
+assert(stackedStore.save(match,stacked),'overhealth, large inventories and stacked timers survive checkpoint validation');
+const stackedRoundtrip=stackedStore.load(match);
+assert.deepEqual(stackedRoundtrip.player,stacked.player);
+assert.deepEqual(stackedRoundtrip.bots,stacked.bots);
 assert.deepEqual(restored.rewarded,['lap:1'],'reward idempotency keys must round-trip');
 assert.deepEqual(restored.awardedOvertakeIds,[0,3],'paid rival ids must round-trip with the checkpoint');
 const {awardedOvertakeIds:unusedOldField,...legacySnapshot}=sample;
@@ -98,12 +107,12 @@ for(const [label,invalid] of [
  ['negative AI health',{...sample,bots:bots.map((bot,i)=>i?bot:{...bot,health:-2})}],
  ['AI outside road world',{...sample,bots:bots.map((bot,i)=>i?bot:{...bot,offset:9000000})}],
  ['pickup outside track world',{...sample,bonuses:[{...sample.bonuses[0],x:9000000}]}],
- ['player impossible health',{...sample,player:{...player,health:1000000}}],
- ['AI impossible health',{...sample,bots:bots.map((bot,i)=>i?bot:{...bot,health:1000000})}],
- ['player excess ammo',{...sample,player:{...player,gunAmmo:100}}],
+ ['player nonfinite health',{...sample,player:{...player,health:Infinity}}],
+ ['AI nonfinite health',{...sample,bots:bots.map((bot,i)=>i?bot:{...bot,health:NaN})}],
+ ['unsafe player ammo integer',{...sample,player:{...player,gunAmmo:Number.MAX_SAFE_INTEGER+1}}],
  ['negative current lap time',{...sample,player:{...player,curLap:-90}}],
  ['excessive player speed',{...sample,player:{...player,speed:10000}}],
- ['excessive player health',{...sample,player:{...player,health:1000}}],
+ ['negative player health',{...sample,player:{...player,health:-1}}],
  ['negative shield timer',{...sample,player:{...player,shieldTimer:-1}}],
  ['invalid player sample index',{...sample,player:{...player,lastSampleIdx:10000000}}],
  ['beyond valley finish lap',{...sample,player:{...player,lap:4}}],
@@ -169,6 +178,43 @@ assert.ok(escape&&Math.abs(escape.x)>2.99||escape&&Math.abs(escape.z)>3.99,'trap
 assert.equal(sweepCarObstacle2D({x:-20,z:0},{x:-10,z:0},[box],1),null,'approach without collision clear');
 console.log('ROADSIDE_COLLISION_PASS swept/rotated/negative/inside-recovery');
 
+// Sample the actual course with the permanent closure present. The old
+// crossing ran straight through the barrier in the middle of every lap.
+require('../src/game/config.js');
+const {CONFIG}=globalThis.CyberRace.game;
+const THREE=await import('../vendor/three/three.module.js');
+const draw=new Proxy({},{
+ get:(_,name)=>['createRadialGradient','createLinearGradient'].includes(name)?()=>({addColorStop(){}}):()=>{}
+});
+const scene=new THREE.Group();
+const valley=createTrackEnvironment({THREE,scene,CONFIG,document:{createElement:()=>({getContext:()=>draw})}});
+assert(valley.totalLength>5150,'single road is longer than the old two-branch layout');
+for(let i=0;i<valley.samples.length;i++){
+ for(let j=i+1;j<valley.samples.length;j++){
+  const count=valley.samples.length,gap=Math.min(j-i,count-(j-i));
+  if(gap*valley.totalLength/count<=250)continue;
+  assert(valley.samples[i].distanceToSquared(valley.samples[j])>(2*CONFIG.ROAD_HALF)**2,
+   'non-adjacent stretches of the single road must not overlap');
+ }
+}
+assert.equal(scene.getObjectByName('finish-barricades')?.visible,true,'the finish closure is permanent');
+const oldExit=[{x:20,z:141},{x:100,z:141}];
+assert(valley.scenery.blocksFinishBarricade(...oldExit),'the former exit is still closed');
+assert(sweepCarObstacle2D(...oldExit,valley.carObstacles,CONFIG.CAR_RADIUS),'the closure blocks the player too');
+for(const offset of [-36,0,36]){
+ let previous;
+ for(let step=0;step<=6000;step++){
+  const t=(step%6000)/6000;
+  const point=valley.trackCurve.getPointAt(t);
+  const direction=valley.trackCurve.getTangentAt(t);
+  point.x-=direction.z*offset;
+  point.z+=direction.x*offset;
+  assert(!previous||!valley.scenery.blocksFinishBarricade(previous,point),`Valley lane ${offset} meets barricades at ${t}`);
+  previous=point;
+ }
+}
+console.log('VALLEY_FINISH_LAYOUT_PASS three full-lap lanes clear, former exit solid');
+
 const index=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const hud=readFileSync(new URL('../assets/hud.css',import.meta.url),'utf8');
 const runtime=readFileSync(new URL('../src/game/runtime.js',import.meta.url),'utf8');
@@ -192,7 +238,7 @@ console.log('ACCESSIBILITY_AND_CONTROLS_STATIC_PASS reduced motion, ten touch bu
  const runtimeBots=bots.map(bot=>({...bot,car:{group:{position:point(),rotation:{},visible:true}},healthPlane:{visible:true}}));
  const env={
   activeChampionship:{stageIndex:0},gameStarted:true,gameFinished:false,raceCountdown:0,
-  currentTrackId:'valley',stageCheckpointMatch:()=>match,stageCheckpoint:checkpointStore,
+  CONFIG,currentTrackId:'valley',stageCheckpointMatch:()=>match,stageCheckpoint:checkpointStore,
   checkpointPlayerNumbers:playerNumbers,checkpointBotNumbers:botNumbers,
   player:runtimePlayer,opponents:runtimeBots,bonusMeshes:[],
   creditedRaceEvents:new Set(['lap:1']),championshipFinishedIds:[],overtakeTracker:tracker,

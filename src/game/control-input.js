@@ -41,7 +41,7 @@
     };
   }
 
-  function resolveDrivingInput(keys,touch,pad,enabled=true){
+  function resolveDrivingInput(keys,touch,pad,enabled=true,autoThrottle=false){
     if(!enabled)return {throttle:0,brake:0,steering:0,handbrake:false};
     const key=(...names)=>names.some(name=>Boolean(keys?.[name]));
     const forward=key('KeyW','w','arrowup','ц','ArrowUp')||Boolean(touch?.forward);
@@ -49,9 +49,10 @@
     const left=key('KeyA','a','arrowleft','ф','ArrowLeft')||Boolean(touch?.left);
     const right=key('KeyD','d','arrowright','в','ArrowRight')||Boolean(touch?.right);
     const padSteer=Number.isFinite(pad?.steer)?Math.max(-1,Math.min(1,pad.steer)):0;
+    const brake=Math.max(Number(backward),clamp01(pad?.brake));
     return {
-      throttle:Math.max(Number(forward),clamp01(pad?.throttle)),
-      brake:Math.max(Number(backward),clamp01(pad?.brake)),
+      throttle:Math.max(Number(forward||autoThrottle&&brake===0),clamp01(pad?.throttle)),
+      brake,
       steering:Math.max(-1,Math.min(1,Number(right)-Number(left)+padSteer)),
       handbrake:key('shift','ShiftLeft','ShiftRight')||Boolean(touch?.drift)||Boolean(pad?.drift)
     };

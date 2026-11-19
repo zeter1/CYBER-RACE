@@ -4,13 +4,13 @@ import {createHash} from 'node:crypto';
 const fail=message=>{console.error('VALIDATION ERROR:',message);process.exitCode=1;};
 const required=[
   'src/core/three-loader.js','src/core/storage.js','src/core/seeded-rng.js','vendor/three/three.module.js','vendor/three/LICENSE',
-  'src/game/config.js','src/game/garage-profile.js','src/game/race-state.js','src/game/sector-timing.js','src/game/lap-ghost.js','src/game/overtake-events.js','src/game/pickup-rules.js','src/game/race-contracts.js','src/game/championship.js','src/game/stage-checkpoint.js','src/game/control-input.js','src/game/pilot-tutorial.js','src/game/player-driving.js','src/game/drift-mastery.js','src/game/slipstream.js','src/game/corner-spotter.js','src/game/track-environment.js','src/game/model-geometry.js','src/game/car-model.js','src/game/pickup-model.js','src/game/runtime.js',
+  'src/game/config.js','src/game/garage-profile.js','src/game/race-state.js','src/game/sector-timing.js','src/game/lap-ghost.js','src/game/overtake-events.js','src/game/pickup-rules.js','src/game/race-contracts.js','src/game/championship.js','src/game/stage-checkpoint.js','src/game/control-input.js','src/game/pilot-tutorial.js','src/game/player-driving.js','src/game/drift-mastery.js','src/game/slipstream.js','src/game/track-environment.js','src/game/model-geometry.js','src/game/car-model.js','src/game/pickup-model.js','src/game/runtime.js',
   'src/ai/difficulty.js','src/ai/opponent-brain.js',
   'src/weapons/geometry.js','src/weapons/ballistics.js',
   'src/audio/audio-system.js','src/game/combat-effects.js','src/game/speed-feedback.js','src/game/defense-pulse.js','src/game/frame-quality.js','src/ui/garage.js',
   'src/ui/elements.js','src/ui/hud-model.js','src/ui/threat-feedback.js','src/ui/minimap.js',
-  'tests/contracts.mjs','tests/drift-mastery.mjs','tests/slipstream.mjs','tests/corner-spotter.mjs','tests/pilot-tutorial.mjs','tests/race-contracts.mjs','tests/sector-timing.mjs','tests/lap-ghost.mjs','tests/threat-feedback.mjs','tests/defense-pulse.mjs','tests/overtake-events.mjs','tests/frame-quality.mjs','tests/scenarios.mjs','tests/opponent-tactics.mjs','tests/opponent-combat.mjs','tests/combat-effects.mjs','tests/audio-system.mjs','tests/garage.mjs','tests/championship.mjs','tests/approved-features.mjs','tests/fixtures/cyber-replay.json',
-  'docs/ARCHITECTURE.md','CHANGELOG.md','assets/menu.css','assets/garage.css','assets/hud.css','assets/mobile-cockpit.css','assets/menu-pit-stop.png',
+  'tests/contracts.mjs','tests/drift-mastery.mjs','tests/slipstream.mjs','tests/pilot-tutorial.mjs','tests/race-contracts.mjs','tests/sector-timing.mjs','tests/lap-ghost.mjs','tests/threat-feedback.mjs','tests/defense-pulse.mjs','tests/overtake-events.mjs','tests/frame-quality.mjs','tests/scenarios.mjs','tests/opponent-tactics.mjs','tests/opponent-combat.mjs','tests/combat-effects.mjs','tests/audio-system.mjs','tests/garage.mjs','tests/championship.mjs','tests/approved-features.mjs','tests/fixtures/cyber-replay.json',
+  'docs/ARCHITECTURE.md','CHANGELOG.md','assets/menu.css','assets/garage.css','assets/hud.css','assets/mobile-cockpit.css','assets/menu-pit-stop.png','assets/menu-pit-stop.webp',
   'scripts/build-garage-art.mjs','assets/garage/backplate.png','assets/garage/cars.js',
   'assets/garage/universal-views.png','assets/garage/interceptor-views.png','assets/garage/armored-views.png'
 ];
@@ -48,7 +48,7 @@ if(!html.includes('href="assets/mobile-cockpit.css"'))fail('index does not load 
 if(!html.includes('href="assets/garage.css"'))fail('index does not load garage stylesheet');
 const orderedScripts=[
   'src/core/three-loader.js','src/core/storage.js','src/core/seeded-rng.js',
-  'src/game/config.js','src/game/garage-profile.js','src/game/race-state.js','src/game/sector-timing.js','src/game/lap-ghost.js','src/game/overtake-events.js','src/game/pickup-rules.js','src/game/race-contracts.js','src/game/championship.js','src/game/stage-checkpoint.js','src/game/control-input.js','src/game/pilot-tutorial.js','src/game/player-driving.js','src/game/drift-mastery.js','src/game/slipstream.js','src/game/corner-spotter.js','src/game/track-environment.js',
+  'src/game/config.js','src/game/garage-profile.js','src/game/race-state.js','src/game/sector-timing.js','src/game/lap-ghost.js','src/game/overtake-events.js','src/game/pickup-rules.js','src/game/race-contracts.js','src/game/championship.js','src/game/stage-checkpoint.js','src/game/control-input.js','src/game/pilot-tutorial.js','src/game/player-driving.js','src/game/drift-mastery.js','src/game/slipstream.js','src/game/track-environment.js',
   'src/ai/difficulty.js','src/ai/opponent-brain.js',
   'src/weapons/geometry.js','src/weapons/ballistics.js',
   'src/audio/audio-system.js',
@@ -75,8 +75,8 @@ for(const token of ['cyberRaceTuning','cyberRaceBuildRecords','createTuningStore
 }
 const runtime=readFileSync('src/game/runtime.js','utf8');
 for(const token of [
-  'createCornerSpotter','renderCornerSpotter','createRaceGrid','chooseOpponentCombatTarget','selectOpponentCombatTarget','findProjectileVehicle','planOpponentTactics','stepOpponentFrame','planOpponentAttack','stepHomingProjectile','createTrackEnvironment',
-  'createGarage','createGarageRecords','playerConfig','healPlayerHealth','respawnHealth','resolveLapCompletion','sweptVehicleContact2D','stepPlayerDriving','readStandardGamepad','resolveDrivingInput','createMinimap','buildRacePositions','createCarFactory','createPickupFactory','createOvertakeTracker','canBenefitFromPickup','createRaceContractTracker','createPilotTutorial','createDriftMastery','createSectorTimer','createLapGhostTracker','createLapGhostVisual','lapGhostVisual.update','recordSectorSplit','updateOvertakes','buildThreatIndicators','renderThreatIndicators','requestRaceRestart',"dataset.cyberBoot='ready'"
+  'createRaceGrid','chooseOpponentCombatTarget','selectOpponentCombatTarget','findProjectileVehicle','planOpponentTactics','stepOpponentFrame','planOpponentAttack','stepHomingProjectile','createTrackEnvironment',
+  'createGarage','createGarageRecords','playerConfig','healPlayerHealth','respawnHealth','resolveLapCompletion','sweptVehicleContact2D','stepPlayerDriving','readStandardGamepad','resolveDrivingInput','createMinimap','buildRacePositions','createCarFactory','createPickupFactory','createOvertakeTracker','applyPickup','createRaceContractTracker','createPilotTutorial','createDriftMastery','createSectorTimer','createLapGhostTracker','createLapGhostVisual','lapGhostVisual.update','recordSectorSplit','updateOvertakes','buildThreatIndicators','renderThreatIndicators','requestRaceRestart',"dataset.cyberBoot='ready'"
 ]){
   if(!runtime.includes(token))fail('runtime integration missing: '+token);
 }

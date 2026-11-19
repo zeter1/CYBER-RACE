@@ -62,7 +62,7 @@
     return {...base,...buildProfile(b).driving,GRIP:b.levels.tires?Math.max(.85,base.GRIP-.008*b.levels.tires):base.GRIP};
   }
   function healPlayerHealth(health,maxHealth,amount){return Math.max(0,Math.min(maxHealth,health+Math.max(0,amount)));}
-  function respawnHealth(health,maxHealth,revive){return revive?maxHealth:Math.min(maxHealth,Math.max(1,health));}
+  function respawnHealth(health,maxHealth,revive){return revive?maxHealth:Math.max(1,health);}
   function read(storage,key){try{return JSON.parse(storage?.getItem(key)||'null');}catch{return null;}}
   function write(storage,key,value){
     try{

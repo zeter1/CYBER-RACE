@@ -5,7 +5,7 @@
     throw new Error('CYBER RACE modules were not loaded in the expected order');
   }
   const {loadThree,loadObject,saveObject}=CyberRace.core;
-  const {CONFIG,SETTINGS_DEFAULTS,SINGLE_RACE_MODES,createTrackEnvironment,sweepCarObstacle2D,createRaceGrid,resolveLapCompletion,sweptVehicleContact2D,singleRaceFinishOrder,stepPlayerDriving,readStandardGamepad,resolveDrivingInput,createCombatEffects,createCombatRenderer,createSpeedFeedback,cameraViewPose,measureFrameRate,stepAdaptiveQuality,CAR_PROFILES,garagePaint,buildProfile,buildLabel,buildKey,playerConfig,healPlayerHealth,respawnHealth,loadGarage,saveGarage,createTuningStore,createGarageRecords,createOvertakeTracker,createDriftMastery,createSlipstreamTracker,createCornerSpotter,canBenefitFromPickup,getRaceContractDefinition,createRaceContractTracker,createSectorTimer,createLapGhostTracker,createLapGhostVisual,createLapGhostStore,createPilotTutorial,isPrecisionInterception,precisionNitroReward,defenseRocketCue,formatSectorTime,formatSectorDelta}=CyberRace.game;
+  const {CONFIG,SETTINGS_DEFAULTS,SINGLE_RACE_MODES,createTrackEnvironment,sweepCarObstacle2D,createRaceGrid,resolveLapCompletion,sweptVehicleContact2D,singleRaceFinishOrder,stepPlayerDriving,readStandardGamepad,resolveDrivingInput,createCombatEffects,createCombatRenderer,createSpeedFeedback,cameraViewPose,measureFrameRate,stepAdaptiveQuality,CAR_PROFILES,garagePaint,buildProfile,buildLabel,buildKey,playerConfig,healPlayerHealth,respawnHealth,loadGarage,saveGarage,createTuningStore,createGarageRecords,createOvertakeTracker,createDriftMastery,createSlipstreamTracker,applyPickup,getRaceContractDefinition,createRaceContractTracker,createSectorTimer,createLapGhostTracker,createLapGhostVisual,createLapGhostStore,createPilotTutorial,isPrecisionInterception,precisionNitroReward,defenseRocketCue,formatSectorTime,formatSectorDelta}=CyberRace.game;
   const {CHAMPIONSHIP_STAGES,CHAMPIONSHIP_DRIVERS,CHAMPIONSHIP_POINTS,championshipStandings,championshipFinishOrder,createChampionshipStore}=CyberRace.game;
   const {getDifficulty,planOpponentTactics,selectOpponentCombatTarget,stepOpponentFrame,planOpponentAttack}=CyberRace.ai;
   const {createSegmentSphereHit,segmentSphereEntry3D,segmentBoxHit3D,createObstacleIndex,selectRocketTarget,stepHomingProjectile}=CyberRace.weapons;
@@ -89,18 +89,16 @@
     settings.sound=settings.sound!==false;
     settings.cameraShake=settings.cameraShake!==false;
     settings.lapGhost=settings.lapGhost!==false;
-    settings.cornerSpotter=settings.cornerSpotter!==false;
     settings.tutorialEnabled=settings.tutorialEnabled!==false;
     settings.tutorialDone=settings.tutorialDone===true;
     settings.tutorialShieldSeen=settings.tutorialShieldSeen===true;
+    settings.touchAutoThrottle=settings.touchAutoThrottle===true;
+    const mobileControls=matchMedia('(pointer:coarse)');
+    const initialInputMode=()=>mobileControls.matches?'touch':'keyboard';
+    const initialQualityMode=()=>settings.quality==='low'||(settings.quality==='auto'&&mobileControls.matches)?'low':'high';
     const pilotTutorial=createPilotTutorial();
     pilotTutorial.start({enabled:settings.tutorialEnabled,done:settings.tutorialDone,shieldSeen:settings.tutorialShieldSeen});
-    let tutorialInputMode='keyboard';
-    const cornerSpotterEl=document.getElementById('corner-spotter');
-    const cornerArrowEl=document.getElementById('corner-arrow');
-    const cornerTitleEl=document.getElementById('corner-title');
-    const cornerDistanceEl=document.getElementById('corner-distance');
-    const cornerProgressEl=document.getElementById('corner-progress');
+    let tutorialInputMode=initialInputMode();
     const pilotTutorialEl=document.getElementById('pilot-tutorial');
     const pilotHeadingEl=document.getElementById('pilot-tutorial-heading');
     const pilotTitleEl=document.getElementById('pilot-tutorial-title');
@@ -119,9 +117,16 @@
       if(!view)return;
       pilotTutorialEl.dataset.kind=view.kind;
       if(pilotHeadingEl.textContent!==view.heading)pilotHeadingEl.textContent=view.heading;
-      if(pilotTitleEl.textContent!==view.title)pilotTitleEl.textContent=view.title;
+      let title=view.title;
+      if(mobileControls.matches&&view.kind==='step'){
+        if(view.key==='▲ ГАЗ'&&!settings.touchAutoThrottle)title='Нажми ▲, чтобы разогнаться';
+        else if(view.key==='ПУЛИ')title=player.gunAmmo>0?'Нажми «Пули»':'Подбери патроны на трассе';
+        else if(view.key==='НИТРО')title=player.nitro>0?'Нажми «Нитро»':'Подбери нитро на трассе';
+      }
+      if(pilotTitleEl.textContent!==title)pilotTitleEl.textContent=title;
       if(pilotDetailEl.textContent!==view.detail)pilotDetailEl.textContent=view.detail;
-      if(pilotKeyEl.textContent!==view.key)pilotKeyEl.textContent=view.key;
+      const key=view.key==='▲ ГАЗ'&&settings.touchAutoThrottle?'АВТОГАЗ':view.key;
+      if(pilotKeyEl.textContent!==key)pilotKeyEl.textContent=key;
       pilotSkipButton.hidden=!view.skippable;
     }
     function difficulty(){return getDifficulty(activeChampionship?{...settings,difficulty:championship.snapshot().difficulty}:settings);}
@@ -136,6 +141,7 @@
       return persisted;
     }
     function syncSettingsUI(){
+      document.body.classList.toggle('touch-auto-throttle',settings.touchAutoThrottle);
       document.querySelectorAll('[data-setting]').forEach(el=>{
         const key=el.dataset.setting;
         if(el.type==='radio')el.checked=settings[key]===el.value;
@@ -215,7 +221,7 @@
         if(key==='sound'){audio.setEnabled(settings.sound);if(settings.sound)audio.resume();}
         if(key==='quality'){
           lowFpsWindows=0;highFpsWindows=0;
-          setQualityMode(settings.quality==='low'?'low':'high',true);
+          setQualityMode(initialQualityMode(),true);
         }
         if(key==='difficulty'&&gameStarted&&!gameFinished)showMessage(`🏁 СЛОЖНОСТЬ: ${difficulty().label}`);
         if(key==='tutorialEnabled'){pilotTutorial.configure(settings.tutorialEnabled);renderPilotTutorial();}
@@ -264,24 +270,6 @@
       else if(!event.shiftKey&&(document.activeElement===last||!pauseMenu.contains(document.activeElement))){event.preventDefault();first.focus();}
     },true);
 
-    class SkidSystem {
-      constructor(scene,max=100){this.scene=scene;this.skids=[];this.pool=[];this.max=max;this.geometry=new THREE.PlaneGeometry(0.35,1.0);}
-      add(pos, angle) {
-        let mesh;
-        if(this.pool.length>0){mesh=this.pool.pop();mesh.visible=true;mesh.material.opacity=0.6;}
-        else{mesh=new THREE.Mesh(this.geometry,new THREE.MeshBasicMaterial({color:0x111111,transparent:true,opacity:0.6,depthWrite:false}));mesh.rotation.x=-Math.PI/2;}
-        mesh.position.set(pos.x,0.04,pos.z); mesh.rotation.z=angle;
-        this.scene.add(mesh); this.skids.push({mesh, life:10});
-        if(this.skids.length>this.max){const old=this.skids.shift();old.mesh.visible=false;this.pool.push(old.mesh);}
-      }
-      update(dt) {
-        for(let i=this.skids.length-1;i>=0;i--){
-          const s=this.skids[i]; s.life-=dt;
-          s.mesh.material.opacity=Math.max(0,s.life/10*0.6);
-          if(s.life<=0){s.mesh.visible=false;this.pool.push(s.mesh);this.skids.splice(i,1);}
-        }
-      }
-    }
 
     const shockwaves=[];
     const shockwaveGeometry=new THREE.RingGeometry(0.92,1.08,48);
@@ -314,8 +302,8 @@
     }
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x9296b3);
-    scene.fog = new THREE.FogExp2(0x9296b3, 0.00072);
+    scene.background = new THREE.Color();
+    scene.fog = new THREE.FogExp2();
     const camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, 0.5, 2200);
     const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference: "high-performance" });
     renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -333,45 +321,33 @@
     renderer.domElement.addEventListener('pointerdown',()=>renderer.domElement.focus({preventScroll:true}));
     renderer.domElement.addEventListener('pointercancel',clearInputs);
 
-    function createSky() {
-      const canvas=document.createElement('canvas');canvas.width=2048;canvas.height=1024;
-      const ctx=canvas.getContext('2d');
-      const grad=ctx.createLinearGradient(0,0,0,1024);
-      grad.addColorStop(0,'#13264d');grad.addColorStop(0.21,'#344c79');grad.addColorStop(0.34,'#79799c');
-      grad.addColorStop(0.43,'#d79089');grad.addColorStop(0.49,'#ffd19a');grad.addColorStop(0.57,'#b697a1');grad.addColorStop(1,'#798da6');
-      ctx.fillStyle=grad;ctx.fillRect(0,0,2048,1024);
-      const glow=ctx.createRadialGradient(1330,431,8,1330,431,300);
-      glow.addColorStop(0,'rgba(255,228,163,0.95)');glow.addColorStop(0.18,'rgba(255,178,109,0.45)');glow.addColorStop(1,'rgba(255,150,100,0)');
-      ctx.fillStyle=glow;ctx.fillRect(1020,120,620,620);
-      ctx.fillStyle='#ffe9ba';ctx.beginPath();ctx.arc(1330,431,18,0,Math.PI*2);ctx.fill();
-      // Independent seeded wisps never consume the gameplay RNG sequence.
-      let skySeed=38119;const skyRandom=()=>{skySeed=(Math.imul(skySeed,1664525)+1013904223)>>>0;return skySeed/4294967296;};
-      for(let i=0;i<42;i++){
-        const x=skyRandom()*2048,y=255+skyRandom()*205,w=65+skyRandom()*260,h=3+skyRandom()*13;
-        for(const wrap of [-2048,0,2048]){
-          const cloud=ctx.createLinearGradient(0,y-h,0,y+h);cloud.addColorStop(0,'rgba(255,189,161,0)');cloud.addColorStop(0.55,'rgba(255,196,173,0.19)');cloud.addColorStop(1,'rgba(50,51,86,0.18)');
-          ctx.fillStyle=cloud;ctx.beginPath();ctx.ellipse(x+wrap,y,w,h,-0.035,0,Math.PI*2);ctx.fill();
-        }
-      }
-      const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
-      const sky=new THREE.Mesh(new THREE.SphereGeometry(1900,32,24),new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,depthWrite:false,fog:false}));
-      sky.name='sunset-sky';sky.renderOrder=-10;return sky;
-    }
-    scene.add(createSky());
-
-    scene.add(new THREE.AmbientLight(0x8e9dc1,0.42));
-    const sun=new THREE.DirectionalLight(0xffc58d,3.0);
-    sun.position.set(-230,150,150); sun.castShadow=true;
+    const ambient=new THREE.AmbientLight();
+    const skyLight=new THREE.HemisphereLight();
+    const sun=new THREE.DirectionalLight();
+    sun.castShadow=true;
     sun.shadow.mapSize.set(1536,1536);
     sun.shadow.camera.left=-210; sun.shadow.camera.right=210; sun.shadow.camera.top=210; sun.shadow.camera.bottom=-210; sun.shadow.camera.far=650;
     sun.shadow.bias=-0.0003;sun.shadow.normalBias=0.12;
-    scene.add(sun);scene.add(sun.target);
-    scene.add(new THREE.HemisphereLight(0x9dbdee,0x675047,1.55));
+    scene.add(ambient,skyLight,sun,sun.target);
+    function placeTrackLight(position){
+      const [x,y,z]=scenery.atmosphere.lightOffset;
+      sun.position.set(position.x+x,position.y+y,position.z+z);
+      sun.target.position.copy(position);sun.target.updateMatrixWorld();
+    }
+    function applyTrackAtmosphere(position){
+      const light=scenery.atmosphere;
+      scene.background.setHex(light.fogColor);
+      scene.fog.color.setHex(light.fogColor);scene.fog.density=light.fogDensity;
+      ambient.color.setHex(light.ambient);ambient.intensity=light.ambientPower;
+      sun.color.setHex(light.key);sun.intensity=light.keyPower;
+      skyLight.color.setHex(light.skyLight);skyLight.groundColor.setHex(light.bounce);skyLight.intensity=light.fill;
+      placeTrackLight(position);
+    }
 
     let trackGroup=new THREE.Group();trackGroup.name='race-track-valley';scene.add(trackGroup);
     let currentTrackId='valley';
     let {trackPoints,trackCurve,totalLength,samples,tangents,isOnRoadFast,findClosest,projectileObstacles,carObstacles,scenery}=createTrackEnvironment({THREE,scene:trackGroup,document,CONFIG});
-    let cornerSpotter=createCornerSpotter(samples);
+    applyTrackAtmosphere(samples[0]);
     const sceneryMotionPreference=matchMedia('(prefers-reduced-motion: reduce)');
 
     let obstacleIndex=createObstacleIndex(projectileObstacles);
@@ -400,7 +376,7 @@
         t:startGrid[i+1].t, baseSpeed:44+Math.random()*7, speed:44+Math.random()*7,
         offset:startGrid[i+1].offset,targetOffset:startGrid[i+1].offset,laneChangeTimer:2+Math.random()*3,bumpOffset:0,bumpVelocity:0,
         slowTimer:0,health:100,dead:false,
-        respawnTimer:0, attackCooldown:0, rockets:3, gunAmmo:60, 
+        respawnTimer:0, attackCooldown:0, rockets:0, gunAmmo:0,
         lap:1, prevT:startGrid[i+1].t, crossedHalf:false,
         lastSampleIdx:0,
         nitroCharges:1,nitroTimer:0,speedBoostTimer:0,shieldTimer:0,
@@ -484,10 +460,11 @@
     const player={
       pos:samples[0].clone().addScaledVector(startPerp,startGrid[0].offset), heading:Math.atan2(tangents[0].x,tangents[0].z),
       speed:0, speedLat:0, steerAngle:0, wheelRot:0, lap:1, lapStart:0, bestLap:Infinity, curLap:0,
-      prevT:0, crossedHalf:true, rockets:4, gunAmmo:80, nitro:3,
+      prevT:0, crossedHalf:true, rockets:0, gunAmmo:0, nitro:3,
       speedBoostTimer:0, nitroTimer:0, shieldTimer:0, regenDelay:0,
       maxSpeed:drivingConfig.MAX_SPEED, maxHealth:activeProfile.maxHealth, health:activeProfile.maxHealth, invincibleTimer:0,
-      driftTime:0, driftScoreCarry:0, score:0, kills:0, deaths:0, combo:0, comboTimer:0,
+      driftTime:0, driftScoreCarry:0, // Legacy numeric fields in the V1 stage checkpoint.
+      score:0, kills:0, deaths:0, combo:0, comboTimer:0,
       totalTime:0, lastSampleIdx:0, destroyed:false, deathTimer:0, damageCooldown:0,
       deathPos:new THREE.Vector3(), deathHeading:0, wrongWayTimer:0, resetCooldown:0,
       pulseCooldown:0, stuckTimer:0
@@ -509,7 +486,7 @@
     let lastSectorNotice=null;
 
     let paused=true,gameStarted=false,gameFinished=false,menuOpen=false,lastRaceWon=false;
-    let raceCountdown=0, countdownLastNumber=null, cameraShake=0, nitroFxTimer=0, incomingThreat=Infinity;
+    let raceCountdown=0, countdownLastNumber=null, cameraShake=0, incomingThreat=Infinity;
     let incomingRocketSource=null,lastDamageSource=null,lastDamageUntil=-Infinity;
     const threatEdges=Array.from(document.querySelectorAll('[data-threat-direction]'));
     let raceStartHint=true;
@@ -566,7 +543,9 @@
     let checkpointRecoveryNotice='';
     function stageCheckpointMatch(state=championship.snapshot(),stageIndex=activeChampionship?.stageIndex,build=activeBuild){
       if(!state||stageIndex===undefined||stageIndex!==state.results.length||stageIndex>=CHAMPIONSHIP_STAGES.length)return null;
-      return {stageIndex,trackId:CHAMPIONSHIP_STAGES[stageIndex].id,buildKey:buildKey(build),signature:JSON.stringify(state)};
+      const trackId=CHAMPIONSHIP_STAGES[stageIndex].id;
+      const signature=trackId==='valley'?CONFIG.VALLEY_ROUTE_VERSION+':'+JSON.stringify(state):JSON.stringify(state);
+      return {stageIndex,trackId,buildKey:buildKey(build),signature};
     }
     function saveStageCheckpoint(){
       if(!activeChampionship||!gameStarted||gameFinished||raceCountdown>0)return false;
@@ -605,6 +584,7 @@
         o.car.group.position.set(pt.x+perp.x*(o.offset+o.bumpOffset),0.02,pt.z+perp.z*(o.offset+o.bumpOffset));
         o.car.group.rotation.y=Math.atan2(tangent.x,tangent.z)+Math.PI;
         o.car.group.visible=!o.dead;o.healthPlane.visible=!o.dead;
+        updateWeaponVis(o.car,o);
         o.lastHealthDrawn=-1;
       });
       while(bonusMeshes.length)removeBonusAt(bonusMeshes.length-1,false);
@@ -624,7 +604,7 @@
       // Checkpoint has no current trace: display saved best but start a new
       // recording only after the next complete clean lap.
       lapGhost.reset();
-      lapGhost.importBest(lapGhostStore.get(currentTrackId,buildKey(activeBuild)));
+      lapGhost.importBest(lapGhostStore.get(currentTrackId==='valley'?CONFIG.VALLEY_ROUTE_VERSION:currentTrackId,buildKey(activeBuild)));
       lapGhostRecordResult=null;lastSectorNotice=null;
       championshipFinishedIds=data.finishedIds.slice();
       document.body.dataset.stageResumed='true';
@@ -682,12 +662,11 @@
       scene.remove(trackGroup);disposeTrack(trackGroup);
       trackGroup=candidate;scene.add(trackGroup);
       ({trackPoints,trackCurve,totalLength,samples,tangents,isOnRoadFast,findClosest,projectileObstacles,carObstacles,scenery}=environment);
-      cornerSpotter=createCornerSpotter(samples);
       obstacleIndex=createObstacleIndex(projectileObstacles);
       startGrid=createRaceGrid(totalLength,CONFIG.ROAD_HALF,CONFIG.BOT_COUNT);
       startPerp=new THREE.Vector3(-tangents[0].z,0,tangents[0].x).normalize();
       minimap.canvas.remove();minimap=candidateMap;
-      scenery.setQuality(qualityMode);currentTrackId=trackId;
+      scenery.setQuality(qualityMode);applyTrackAtmosphere(samples[0]);currentTrackId=trackId;
       sectorTimer.reset();lapGhost.reset();lastSectorNotice=null;
       driftMastery.reset();slipstreamTracker.reset();
       return true;
@@ -812,6 +791,13 @@
       return canControl()&&!garage?.isOpen()&&!player.destroyed&&!isGameplayInputBlocked();
     }
 
+    function returnCarToTrack(){
+      if(!canControl()||player.destroyed||player.resetCooldown>0)return;
+      player.resetCooldown=CONFIG.MANUAL_RESET_COOLDOWN;
+      showMessage('↩️ ВОЗВРАТ НА ТРАССУ −10');
+      respawnPlayer('manual');
+    }
+
     function beginCountdown(){
       raceCountdown=CONFIG.COUNTDOWN_SECONDS+0.15;
       countdownLastNumber=null;
@@ -858,6 +844,12 @@
     resumeBtn.addEventListener('click',event=>runMenuAction(event,()=>{
       if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
       audio.resume();closeMenu({force:true});
+    },{allowDuringGuard:true}));
+    const mobileTrackReturn=document.getElementById('mobile-track-return');
+    mobileTrackReturn.addEventListener('click',event=>runMenuAction(event,()=>{
+      if(!menuOpen||player.destroyed||raceCountdown>0||player.resetCooldown>0)return;
+      closeMenu({force:true});
+      returnCarToTrack();
     },{allowDuringGuard:true}));
 
     async function requestFullscreenCompat(){
@@ -948,7 +940,6 @@
       checkpointRecoveryNotice='';
       syncRaceModeUI();
       combatEffects.clear();
-      skids.skids.forEach(s=>{s.mesh.visible=false;skids.pool.push(s.mesh);});skids.skids.length=0;
       clearShockwaves();
       pauseMenu.classList.remove('open');finishScreen.classList.add('hidden');startScreen.classList.remove('hidden');
       document.body.classList.remove('low-health');
@@ -1001,13 +992,20 @@
       if(pad&&(drive.throttle>0.05||drive.brake>0.05||Math.abs(drive.steer)>0.05||
         drive.gun||drive.rocket||drive.mirror||nitro||pulse))tutorialInputMode='gamepad';
     }
-    for(const button of document.querySelectorAll('[data-touch]')){
-      const action=button.dataset.touch;
+    const touchButtons=new Map([...document.querySelectorAll('[data-touch]')].map(button=>[button.dataset.touch,button]));
+    const driveActions=new Set(['left','right','forward','backward','drift']);
+    function refreshTouchAction(action){
+      if(!action)return;
+      const held=[...touchPointers.values()].includes(action);
+      if(Object.hasOwn(touchInput,action))touchInput[action]=held;
+      touchButtons.get(action).dataset.active=String(held);
+    }
+    for(const [action,button] of touchButtons){
       const release=e=>{
-        if(touchPointers.get(e.pointerId)!==action)return;
+        if(!touchPointers.has(e.pointerId))return;
+        const heldAction=touchPointers.get(e.pointerId);
         touchPointers.delete(e.pointerId);
-        if(Object.hasOwn(touchInput,action))touchInput[action]=[...touchPointers.values()].includes(action);
-        button.dataset.active=String(Boolean(touchInput[action]));
+        refreshTouchAction(heldAction);
         e.stopPropagation();
       };
       button.addEventListener('pointerdown',e=>{
@@ -1017,11 +1015,20 @@
         try{button.setPointerCapture(e.pointerId);}catch{}
         tutorialInputMode='touch';
         touchPointers.set(e.pointerId,action);
-        if(Object.hasOwn(touchInput,action))touchInput[action]=true;
-        button.dataset.active='true';
+        refreshTouchAction(action);
         audio.resume();
         if(action==='nitro')activateNitro();
         if(action==='pulse')activateDefensePulse();
+      });
+      if(driveActions.has(action))button.addEventListener('pointermove',e=>{
+        if(!touchPointers.has(e.pointerId))return;
+        const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('.touch-direction [data-touch]');
+        const next=target?.dataset.touch||null;
+        const previous=touchPointers.get(e.pointerId);
+        if(previous===next)return;
+        touchPointers.set(e.pointerId,next);
+        refreshTouchAction(previous);
+        refreshTouchAction(next);
       });
       button.addEventListener('pointerup',release);
       button.addEventListener('pointercancel',release);
@@ -1077,11 +1084,7 @@
       }
       if(canControl()&&actionKey==='t'&&!e.repeat){
         e.preventDefault();
-        if(!player.destroyed&&player.resetCooldown<=0){
-          player.resetCooldown=CONFIG.MANUAL_RESET_COOLDOWN;
-          showMessage('↩️ ВОЗВРАТ НА ТРАССУ −10');
-          respawnPlayer('manual');
-        }
+        returnCarToTrack();
         return;
       }
       if(gameStarted && !gameFinished && actionKey==='r' && !e.repeat){
@@ -1418,9 +1421,10 @@
       if(typeof advancePilotTutorial==='function')advancePilotTutorial('gun');
     }
 
-    function updateWeaponVis() {
-      playerCar.rocketLauncher.visible=player.rockets>0;
-      playerCar.machineGun.visible=player.gunAmmo>0;
+    function updateWeaponVis(car=playerCar,racer=player) {
+      car.rocketLauncher.visible=racer.rockets>0;
+      car.machineGun.visible=racer.gunAmmo>0;
+      if(racer!==player)return;
       document.getElementById('slot-rocket').classList.toggle('active', player.rockets>0);
       document.getElementById('slot-gun').classList.toggle('active', player.gunAmmo>0);
     }
@@ -1432,6 +1436,7 @@
       player.deathPos.copy(player.pos);player.deathHeading=player.heading;
       player.deaths++;player.score=Math.max(0,player.score-50);player.combo=0;player.comboTimer=0;
       player.nitroTimer=0;player.speedBoostTimer=0;player.shieldTimer=0;player.health=0;
+      combatEffects.resetDriving();
       clearInputs();playerCar.group.visible=false;playerShieldMesh.visible=false;
       wrongWayEl.classList.remove('show');incomingWarningEl.classList.remove('show');
       lastDamageSource=null;lastDamageUntil=-Infinity;
@@ -1472,16 +1477,18 @@
     function respawnPlayer(reason='track') {
       sectorTimer.invalidate();lapGhost.invalidate();lastSectorNotice=null;
       if(reason==='death'){beginPlayerDeath();return;}
+      combatEffects.resetDriving();
       const revive=reason==='revive';
       overtakeTracker.interrupt();driftMastery.reset();slipstreamTracker.interrupt();
       const previousHealth=player.health;
       const previousRegenDelay=player.regenDelay;
-      const closest=findClosest(player.pos.x,player.pos.z,player.lastSampleIdx);
-      const safeIdx=findSafeRespawnIndex(closest.idx);
-      const pt=samples[safeIdx];
-      player.pos.set(pt.x,0,pt.z);
+      const safeIdx=revive?0:findSafeRespawnIndex(findClosest(player.pos.x,player.pos.z,player.lastSampleIdx).idx);
+      const pt=samples[safeIdx],tg=tangents[safeIdx];
+      const offset=revive?startGrid[0].offset:0;
+      player.pos.set(pt.x-tg.z*offset,0,pt.z+tg.x*offset);
+      if(revive)player.crossedHalf=false;
       pickupSweepStart.copy(player.pos); // A teleport must never sweep through distant pickups.
-      player.heading=Math.atan2(tangents[safeIdx].x,tangents[safeIdx].z);
+      player.heading=Math.atan2(tg.x,tg.z);
       player.speed=0;player.speedLat=0;player.steerAngle=0;
       speedFeedback.reset();
       player.health=respawnHealth(previousHealth,player.maxHealth,revive);
@@ -1518,11 +1525,11 @@
       driftMastery.reset();
       sectorTimer.reset();lapGhost.reset();lastSectorNotice=null;
       lapGhostRecordResult=null;
-      lapGhost.importBest(lapGhostStore.get(currentTrackId,buildKey(activeBuild)));
+      lapGhost.importBest(lapGhostStore.get(currentTrackId==='valley'?CONFIG.VALLEY_ROUTE_VERSION:currentTrackId,buildKey(activeBuild)));
       raceContractTracker.start(activeChampionship?'none':selectedRaceContract,singleRaceMode);
       if(typeof pilotTutorial!=='undefined'){
         pilotTutorial.start({enabled:settings.tutorialEnabled,done:settings.tutorialDone,shieldSeen:settings.tutorialShieldSeen});
-        tutorialInputMode='keyboard';
+        tutorialInputMode=initialInputMode();
       }
       contractGoalAnnounced=false;contractNoticeAt=-Infinity;raceContractNoticeEl.textContent='';
       player.maxSpeed=drivingConfig.MAX_SPEED;player.maxHealth=activeProfile.maxHealth;
@@ -1536,6 +1543,7 @@
       finishScreen.classList.add('hidden'); startScreen.classList.add('hidden');
       document.body.classList.add('game-session-active');
       gameFinished=false;paused=false;gameStarted=true;menuOpen=false;lastRaceWon=false;
+      if(settings.quality==='auto'&&mobileControls.matches)setQualityMode('low');
       raceStartHint=true;
       pauseMenu.classList.remove('open');
       setGameplayCursor(true);
@@ -1546,25 +1554,26 @@
       player.speed=0; player.speedLat=0; player.steerAngle=0; player.health=player.maxHealth; player.invincibleTimer=1.5;
       player.lap=1; player.curLap=0; player.bestLap=Infinity; player.prevT=0; player.crossedHalf=true; player.lastSampleIdx=0;
       lapGhost.beginLap(1,{x:player.pos.x,z:player.pos.z,heading:player.heading});
-      player.rockets=4; player.gunAmmo=80; player.nitro=3; player.speedBoostTimer=0; player.nitroTimer=0; player.shieldTimer=0; player.regenDelay=0;
-      player.driftTime=0; player.driftScoreCarry=0; player.score=0; player.kills=0; player.deaths=0; player.combo=0; player.comboTimer=0; player.totalTime=0;
+      player.rockets=0; player.gunAmmo=0; player.nitro=3; player.speedBoostTimer=0; player.nitroTimer=0; player.shieldTimer=0; player.regenDelay=0;
+      player.score=0; player.kills=0; player.deaths=0; player.combo=0; player.comboTimer=0; player.totalTime=0;
+      player.driftTime=0;player.driftScoreCarry=0;
       player.destroyed=false;player.deathTimer=0;player.damageCooldown=0;player.wrongWayTimer=0;player.resetCooldown=0;
       player.pulseCooldown=0;player.stuckTimer=0;
       playerCar.group.visible=true; playerCar.group.position.set(player.pos.x,0.02,player.pos.z); playerCar.group.rotation.y=player.heading+Math.PI;
       playerShieldMesh.visible=false; playerShieldMesh.position.set(player.pos.x,2,player.pos.z);
-      cameraShake=0; nitroFxTimer=0;
+      cameraShake=0;
       speedFeedback.reset();camera.fov=58;camera.updateProjectionMatrix();
-      const cameraFx=Math.sin(player.heading),cameraFz=Math.cos(player.heading);
-      camCur.set(player.pos.x-cameraFx*18.5+cameraFz*2.4,player.pos.y+8,
-        player.pos.z-cameraFz*18.5-cameraFx*2.4);
-      lookCur.set(player.pos.x+cameraFx*13+cameraFz*.25,player.pos.y+1.65,
-        player.pos.z+cameraFz*13-cameraFx*.25);
+      const pose=cameraViewPose({x:player.pos.x,y:player.pos.y,z:player.pos.z,heading:player.heading},undefined,false,camera.aspect);
+      camCur.set(pose.position.x,pose.position.y,pose.position.z);
+      lookCur.set(pose.look.x,pose.look.y,pose.look.z);
+      cameraAnchor.copy(player.pos);
       playerCar.wheels.forEach(w=>{w.group.rotation.y=0; w.tire.rotation.x=0; w.rim.rotation.x=0;});
       updateWeaponVis();
 
       opponents.forEach((o,i)=>{
         o.health=100; o.dead=false; o.finished=false; o.respawnTimer=0; o.slowTimer=0; o.lap=1;
-        o.rockets=3; o.gunAmmo=60; o.attackCooldown=0.8+Math.random()*1.5; o.speedBoostTimer=0;
+        o.rockets=0; o.gunAmmo=0; o.attackCooldown=0.8+Math.random()*1.5; o.speedBoostTimer=0;
+        updateWeaponVis(o.car,o);
         o.t=startGrid[i+1].t;o.prevT=o.t;o.crossedHalf=false;o.car.group.visible=true;o.healthPlane.visible=true;
         o.offset=startGrid[i+1].offset;o.targetOffset=o.offset;o.laneChangeTimer=2+Math.random()*3;o.bumpOffset=0;o.bumpVelocity=0;
         o.lastSampleIdx=Math.floor(o.t*CONFIG.NUM_SAMPLES); o.nitroCharges=1; o.nitroTimer=0; o.shieldTimer=0; o.lastHealthDrawn=-1;
@@ -1583,7 +1592,6 @@
       for(let i=0;i<CONFIG.NUM_BONUSES;i++)spawnBonus((i*0.016+Math.random()*0.01)%1,(Math.random()-0.5)*1.8);
       while(projectiles.length)removeProjectileAt(projectiles.length-1);
       combatEffects.clear();
-      skids.skids.forEach(s=>{s.mesh.visible=false; skids.pool.push(s.mesh);}); skids.skids.length=0;
       clearShockwaves();
       startScreen.classList.add('hidden');
       beginCountdown();
@@ -1630,19 +1638,17 @@
       const ghostImproved=lapGhost.completeLap({lap:player.lap,elapsed:player.curLap,x:player.pos.x,
         z:player.pos.z,heading:player.heading,valid:lapWasValid});
       if(ghostImproved){
-        lapGhostRecordResult=lapGhostStore.put(currentTrackId,buildKey(activeBuild),lapGhost.exportBest());
+        const ghostTrack=currentTrackId==='valley'?CONFIG.VALLEY_ROUTE_VERSION:currentTrackId;
+        lapGhostRecordResult=lapGhostStore.put(ghostTrack,buildKey(activeBuild),lapGhost.exportBest());
       }
       const completedLap=transition.completedLap;
       player.bestLap=transition.bestLap;
       player.score+=transition.scoreDelta;
       awardRaceEvent('lap:'+completedLap,activeChampionship?300:SINGLE_RACE_MODES[singleRaceMode].lapCredits);
-      if(transition.grantCombatPack){
-        player.rockets=Math.min(9,player.rockets+1);
-        player.gunAmmo=Math.min(99,player.gunAmmo+20);
-        player.nitro=Math.min(5,player.nitro+1);
-        player.health=healPlayerHealth(player.health,player.maxHealth,15);
-        updateWeaponVis();
-        showMessage(`🎁 КРУГ ${completedLap}: БОЕВОЙ КОМПЛЕКТ`);
+      if(transition.grantLapBonus){
+        if(player.nitro<5)player.nitro++;
+        if(player.health<player.maxHealth)player.health=healPlayerHealth(player.health,player.maxHealth,15);
+        showMessage(`🎁 КРУГ ${completedLap}: БОНУС ЗА КРУГ`);
       }
       if(transition.finished){
         player.curLap=0; finishGame(true); return;
@@ -1651,7 +1657,7 @@
       lapGhost.beginLap(player.lap,{x:player.pos.x,z:player.pos.z,heading:player.heading});
       // Commit the awarded lap and its idempotency token together before the next frame.
       if(activeChampionship&&typeof saveStageCheckpoint==='function')saveStageCheckpoint();
-      if(!transition.grantCombatPack)showMessage(`🏁 КРУГ ${completedLap} ПРОЙДЕН! +50 очков · +300 кредитов`);
+      if(!transition.grantLapBonus)showMessage(`🏁 КРУГ ${completedLap} ПРОЙДЕН! +50 очков · +300 кредитов`);
     }
 
     function finishGame(won){
@@ -1716,23 +1722,22 @@
     }
 
     function respawnOpponent(o){
+      const {t,offset}=startGrid[o.id+1];
+      const pt=trackCurve.getPointAt(t),tg=trackCurve.getTangentAt(t).normalize();
       o.tacticalPlan=null;o.speed=o.baseSpeed;
       o.combatTargetId=null;o.burstRemaining=0;o.lastAttackerId=null;o.lastAttackerTimer=0;o.invincibleTimer=1.5;
       o.health=100; o.dead=false; o.slowTimer=0; o.shieldTimer=0; o.attackCooldown=1.2+Math.random();
-      o.rockets=Math.max(o.rockets,2);o.gunAmmo=Math.max(o.gunAmmo,25);o.lastHealthDrawn=-1;o.bumpOffset=0;o.bumpVelocity=0;
+      o.nitroTimer=0;o.speedBoostTimer=0;o.lastHealthDrawn=-1;o.bumpOffset=0;o.bumpVelocity=0;
       o.car.group.visible=true; o.healthPlane.visible=true;
-      const closest = findClosest(o.car.group.position.x, o.car.group.position.z, o.lastSampleIdx);
-      const pt=samples[closest.idx],tg=tangents[closest.idx],perp=new THREE.Vector3(-tg.z,0,tg.x).normalize();
-      o.t=closest.t;o.prevT=o.t;
-      const laneOffset=o.offset+o.bumpOffset;
-      o.car.group.position.set(pt.x+perp.x*laneOffset,0.02,pt.z+perp.z*laneOffset);
+      o.t=t;o.prevT=t;o.crossedHalf=false;
+      o.offset=offset;o.targetOffset=offset;
+      o.car.group.position.set(pt.x-tg.z*offset,0.02,pt.z+tg.x*offset);
       o.car.group.rotation.y=Math.atan2(tg.x,tg.z)+Math.PI;
       o.pickupSweepStart=null;
-      o.lastSampleIdx=closest.idx;
+      o.lastSampleIdx=Math.floor(t*CONFIG.NUM_SAMPLES);
     }
 
     const particles=combatEffects;
-    const skids=new SkidSystem(scene);
     let damageOverlayTimer=null;
     function flashDamage(alpha=0.6){
       if(damageOverlayTimer)clearTimeout(damageOverlayTimer);
@@ -1765,6 +1770,9 @@
       return true;
     }
 
+    function tireOnAsphalt(point){
+      return findClosest(point.x,point.z,player.lastSampleIdx).dist<=CONFIG.ROAD_HALF;
+    }
     function updatePlayer(dt){
       if(!canControl())return;
       player.driftAwardThisFrame=0;
@@ -1795,7 +1803,8 @@
       if(player.regenDelay<=0&&player.health>0&&player.health<player.maxHealth)player.health=healPlayerHealth(player.health,player.maxHealth,CONFIG.PLAYER_REGEN_RATE*difficulty().regen*cl);
       player.shieldTimer=Math.max(0,player.shieldTimer-cl);
       const {throttle:thr,brake:brk,steering:steerIn,handbrake}=resolveDrivingInput(
-        keys,touchInput,gamepadInput,!isGameplayInputBlocked());
+        keys,touchInput,gamepadInput,!isGameplayInputBlocked(),
+        settings.touchAutoThrottle&&tutorialInputMode==='touch');
       if(thr||brk||Math.abs(player.speed)>1.2)raceStartHint=false;
 
       let curMax=player.maxSpeed;
@@ -1817,22 +1826,16 @@
       pickupSweepStart.copy(player.pos);
       player.pos.x+=motion.deltaX;player.pos.z+=motion.deltaZ;
       let driftContact=false;
-      const obstacleHit=typeof carObstacles!=='undefined'&&typeof sweepCarObstacle2D==='function'
+      const hasCarObstacles=typeof carObstacles!=='undefined'&&typeof sweepCarObstacle2D==='function';
+      let obstacleHit=hasCarObstacles
         ?sweepCarObstacle2D({x:previousX,z:previousZ},player.pos,carObstacles,CONFIG.CAR_RADIUS):null;
       if(obstacleHit){
         driftContact=true;
         player.pos.x=obstacleHit.x;player.pos.z=obstacleHit.z;
         player.speed=0;player.speedLat=0;
       }
-      if(motion.drifting){
-        player.driftTime += cl;
-        if(player.driftTime>0.08&&Math.random()<Math.min(1,18*cl)){
-          const rearL = player.pos.clone().addScaledVector(new THREE.Vector3(Math.sin(player.heading+0.35),0,Math.cos(player.heading+0.35)),1.5);
-          const rearR = player.pos.clone().addScaledVector(new THREE.Vector3(Math.sin(player.heading-0.35),0,Math.cos(player.heading-0.35)),1.5);
-          skids.add(rearL, player.heading); skids.add(rearR, player.heading);
-        }
-      } else player.driftTime = Math.max(0, player.driftTime - cl * 3);
 
+      const beforeTrafficX=player.pos.x,beforeTrafficZ=player.pos.z;
       opponents.forEach(o=>{
         if(gameFinished)return;
         if(o.dead)return;
@@ -1859,6 +1862,14 @@
           if(o.health<=0)destroyOpponent(o,false,player);
         }
       });
+      // Opponent contact can push the car; that displacement cannot cross a wall either.
+      if(hasCarObstacles&&(player.pos.x!==beforeTrafficX||player.pos.z!==beforeTrafficZ)){
+        const pushHit=sweepCarObstacle2D({x:beforeTrafficX,z:beforeTrafficZ},player.pos,carObstacles,CONFIG.CAR_RADIUS);
+        if(pushHit){
+          obstacleHit=pushHit;
+          player.pos.x=pushHit.x;player.pos.z=pushHit.z;player.speed=0;player.speedLat=0;
+        }
+      }
       if(player.health<=0&&player.invincibleTimer<=0){
         respawnPlayer('death');
         // Death hides the car; do not reveal it or complete a lap this frame.
@@ -1871,14 +1882,6 @@
       playerShieldMesh.rotation.y+=cl*0.8;
       playerShieldMesh.visible=player.shieldTimer>0;
       if(player.shieldTimer>0)playerShieldMesh.material.opacity=0.12+Math.sin(performance.now()*0.008)*0.06;
-      if(player.nitroTimer>0){
-        nitroFxTimer-=cl;
-        if(nitroFxTimer<=0){
-          nitroFxTimer=0.035;
-          const exhaust=player.pos.clone().add(new THREE.Vector3(-Math.sin(player.heading)*3.2,0.8,-Math.cos(player.heading)*3.2));
-          combatEffects.nitro(playerCar);
-        }
-      }else nitroFxTimer=0;
 
       const wd=player.speed*cl/0.38;
       playerCar.wheels.forEach(w=>{
@@ -1925,6 +1928,8 @@
       if(closest.dist>CONFIG.MAX_TRACK_DISTANCE||Math.abs(player.pos.x)>CONFIG.WORLD_SIZE||Math.abs(player.pos.z)>CONFIG.WORLD_SIZE){
         showMessage('↩️ ВОЗВРАТ НА ТРАССУ'); respawnPlayer('track'); return;
       }
+      combatEffects.updateDriving(playerCar,{nitro:player.nitroTimer>0,drifting:motion.drifting&&!driftContact,
+        speed:player.speed,speedLat:player.speedLat,isAsphalt:tireOnAsphalt},cl);
       const nt = closest.t;
       lapGhost.record({lap:player.lap,elapsed:player.curLap,x:player.pos.x,
         z:player.pos.z,heading:player.heading});
@@ -1999,15 +2004,9 @@
         for(let i=bonusMeshes.length-1; i>=0; i--){
           const b = bonusMeshes[i];
           const pickupStart=o.pickupSweepStart||o.car.group.position;
-          if(canBenefitFromPickup(b.type,o,{nitroKey:'nitroCharges',shieldDuration:5,speedBoostDuration:8})&&
-             segmentSphereHit(pickupStart,o.car.group.position,b.group.position,8)){
-            const type = b.type;
-            if(type==='rocket') o.rockets = Math.min(o.rockets+2, 9);
-            else if(type==='machinegun') o.gunAmmo = Math.min(o.gunAmmo+30, 99);
-            else if(type==='nitro') o.nitroCharges = Math.min((o.nitroCharges||0)+1, 5);
-            else if(type==='speedboost') o.speedBoostTimer = 8;
-            else if(type==='health') o.health = Math.min(o.health+40, 100);
-            else if(type==='shield') o.shieldTimer=Math.max(o.shieldTimer||0,5);
+          if(segmentSphereHit(pickupStart,o.car.group.position,b.group.position,8)){
+            applyPickup(b.type,o,{nitroKey:'nitroCharges',shieldDuration:5,speedBoostDuration:8});
+            updateWeaponVis(o.car,o);
             removeBonusAt(i,true);
           }
         }
@@ -2037,11 +2036,25 @@
           maxSpeed:CONFIG.MAX_SPEED,totalLength,totalLaps:raceLaps(),
           tactics:o.tacticalPlan
         },dt,Math.random);
-        o.laneChangeTimer=motion.laneChangeTimer;o.targetOffset=motion.targetOffset;o.offset=motion.offset;
-        o.bumpVelocity=motion.bumpVelocity;o.bumpOffset=motion.bumpOffset;
+        const oldBot={x:o.car.group.position.x,z:o.car.group.position.z};
+        const nextTangent=motion.finished?tangent:trackCurve.getTangentAt(motion.t).normalize();
+        const nextPosition=motion.finished?null:trackCurve.getPointAt(motion.t);
+        if(nextPosition){
+          const laneOffset=motion.offset+motion.bumpOffset;
+          nextPosition.x-=nextTangent.z*laneOffset;
+          nextPosition.z+=nextTangent.x*laneOffset;
+        }
+        const blocked=nextPosition&&typeof scenery!=='undefined'&&scenery.blocksFinishBarricade?.(oldBot,nextPosition);
+        o.laneChangeTimer=motion.laneChangeTimer;o.targetOffset=motion.targetOffset;
         o.nitroCharges=motion.nitroCharges;o.nitroTimer=motion.nitroTimer;o.speedBoostTimer=motion.speedBoostTimer;
-        o.t=motion.t;o.lap=motion.lap;
-        const effSpeed=motion.effSpeed;
+        if(blocked){
+          // Keep lap progress and lane position consistent with the stopped car.
+          o.bumpVelocity=0;
+        }else{
+          o.offset=motion.offset;o.bumpVelocity=motion.bumpVelocity;o.bumpOffset=motion.bumpOffset;
+          o.t=motion.t;o.lap=motion.lap;
+        }
+        const effSpeed=blocked?0:motion.effSpeed;
         o.speed=effSpeed;
         if(motion.finished){
           frameFinishers.push({id:o.id,time:remainingDistance/Math.max(motion.effSpeed,1e-6)});o.finished=true;o.dead=true;
@@ -2049,11 +2062,8 @@
           for(const projectile of projectiles)if(projectile.ownerRef===o||projectile.target===o)projectile.life=0;
           return;
         }
-        const oldBot={x:o.car.group.position.x,z:o.car.group.position.z};
-        const pt=trackCurve.getPointAt(o.t),tg=trackCurve.getTangentAt(o.t).normalize();
-        const perp=new THREE.Vector3(-tg.z,0,tg.x).normalize();
-        const laneOffset=o.offset+o.bumpOffset;
-        o.car.group.position.set(pt.x+perp.x*laneOffset,0.02,pt.z+perp.z*laneOffset);
+        if(!blocked)o.car.group.position.set(nextPosition.x,0.02,nextPosition.z);
+        const tg=blocked?tangent:nextTangent;
         const laneSteer=THREE.MathUtils.clamp((o.targetOffset-o.offset)*0.018+o.bumpVelocity*0.008,-0.18,0.18);
         o.car.group.rotation.y=Math.atan2(tg.x,tg.z)+Math.PI-laneSteer;
         resolveMissedMovingContact(o,oldBot,dt);
@@ -2074,7 +2084,7 @@
           o.lastHealthDrawn=healthKey;
           o.healthCtx.clearRect(0,0,64,8); o.healthCtx.fillStyle='#330000'; o.healthCtx.fillRect(0,0,64,8);
           o.healthCtx.fillStyle=o.shieldTimer>0?'#22ccff':o.health>60?'#00ff00':o.health>30?'#ffff00':'#ff0000';
-          o.healthCtx.fillRect(0,0,64*Math.max(0,o.health/100),8); o.healthTex.needsUpdate=true;
+          o.healthCtx.fillRect(0,0,64*Math.max(0,Math.min(1,o.health/100)),8); o.healthTex.needsUpdate=true;
         }
 
         o.attackCooldown-=dt;
@@ -2104,6 +2114,7 @@
           o.burstRemaining=attackPlan.burstRemaining;
           if(attackPlan.kind==='rocket'){
             o.rockets--;
+            updateWeaponVis(o.car,o);
             const start=o.car.getMuzzle(true).add(new THREE.Vector3(shotX*.9,0,shotZ*.9));
             const rocket=createRocketMesh(0xff4444,0xff0000,'opponent');
             rocket.position.copy(start);
@@ -2119,6 +2130,7 @@
             audio.play('rocket',soundAt(start,.85));
           }else if(attackPlan.kind==='bullet'){
             o.gunAmmo--;
+            updateWeaponVis(o.car,o);
             const start=o.car.getMuzzle(false);
             const bullet=createBulletMesh('opponent');
             bullet.position.copy(start);bullet.lookAt(start.clone().add(new THREE.Vector3(shotX,0,shotZ)));scene.add(bullet);
@@ -2173,22 +2185,17 @@
       if(!canControl()||player.destroyed)return;
       for(let i=bonusMeshes.length-1;i>=0;i--){
         const m=bonusMeshes[i];
-        if(canBenefitFromPickup(m.type,player,{maxHealth:player.maxHealth,shieldDuration:CONFIG.SHIELD_DURATION})&&
-           segmentSphereHit(pickupSweepStart,player.pos,m.group.position,6)){
+        if(segmentSphereHit(pickupSweepStart,player.pos,m.group.position,6)){
           const t=m.type;
-          if(t==='rocket')player.rockets=Math.min(player.rockets+2,9);
-          else if(t==='machinegun')player.gunAmmo=Math.min(player.gunAmmo+30,99);
-          else if(t==='nitro')player.nitro=Math.min(player.nitro+1,5);
-          else if(t==='speedboost')player.speedBoostTimer=10;
-          else if(t==='health')player.health=healPlayerHealth(player.health,player.maxHealth,40);
-          else if(t==='shield'){
+          const useful=applyPickup(t,player,{shieldDuration:CONFIG.SHIELD_DURATION});
+          if(t==='shield'){
             player.shieldTimer=Math.max(player.shieldTimer,CONFIG.SHIELD_DURATION);
             audio.play('shield'); showMessage('🛡️ ЭНЕРГОЩИТ АКТИВЕН','pickup');
           }
           updateWeaponVis();
           if(t!=='shield')showMessage(`${bonusData[t].icon} ${bonusData[t].name}`,'pickup');
           removeBonusAt(i,true);
-          raceContractTracker.recordUsefulPickup();
+          if(useful)raceContractTracker.recordUsefulPickup();
           audio.play('bonus');
           particles.spawn(player.pos.clone(), bonusData[t].emissive, 4, 4, 0.5, 0.15, false, true);
         }
@@ -2303,6 +2310,7 @@
 
     const camCur=new THREE.Vector3(), camTgt=new THREE.Vector3();
     const lookCur=new THREE.Vector3(), lookTgt=new THREE.Vector3();
+    const cameraAnchor=new THREE.Vector3(), cameraTravel=new THREE.Vector3();
     let speedMotionTime=0;
     let rearviewActive=false;
     function updateCamera(dt){
@@ -2326,7 +2334,12 @@
         const k=1-Math.exp(-7*dt);camCur.lerp(camTgt,k);lookCur.lerp(lookTgt,k);
         camera.position.copy(camCur);camera.lookAt(lookCur);return;
       }
-      const pose=cameraViewPose({x:player.pos.x,y:player.pos.y,z:player.pos.z,heading:player.heading},view,rear);
+      // Carry the chase rig with the car; smooth the viewing angle and distance
+      // independently so forward speed doesn't push the car away from the camera.
+      cameraTravel.subVectors(player.pos,cameraAnchor);
+      camCur.add(cameraTravel);lookCur.add(cameraTravel);
+      cameraAnchor.copy(player.pos);
+      const pose=cameraViewPose({x:player.pos.x,y:player.pos.y,z:player.pos.z,heading:player.heading},view,rear,camera.aspect);
       camTgt.set(pose.position.x,pose.position.y,pose.position.z);
       lookTgt.set(pose.look.x,pose.look.y,pose.look.z);
       // A deliberate camera cut avoids an inverted steering illusion mid-transition.
@@ -2420,22 +2433,30 @@
       }
     }
 
-    function renderCornerSpotter(){
-      if(!cornerSpotterEl)return;
-      const index=player.lastSampleIdx||0;
-      const tangent=tangents[index],point=samples[index];
-      const headingDot=tangent?Math.sin(player.heading)*tangent.x+Math.cos(player.heading)*tangent.z:0;
-      const offCenter=point?Math.hypot(player.pos.x-point.x,player.pos.z-point.z):Infinity;
-      const visible=settings.cornerSpotter&&!rearviewActive&&gameStarted&&!gameFinished&&!paused&&raceCountdown<=0&&!player.destroyed;
-      const hint=visible?cornerSpotter.predict({sampleIndex:index,speed:player.speed,
-        forward:headingDot>0.3,onRoad:offCenter<=CONFIG.ROAD_HALF+12}):null;
-      cornerSpotterEl.hidden=!hint;
-      if(!hint)return;
-      cornerSpotterEl.dataset.severity=hint.severity;
-      cornerArrowEl.textContent=hint.direction==='right'?'↱':'↰';
-      cornerTitleEl.textContent=(hint.severity==='sharp'?'КРУТОЙ ПОВОРОТ':hint.severity==='medium'?'ПОВОРОТ':'ПЛАВНЫЙ ПОВОРОТ')+(hint.direction==='right'?' НАПРАВО':' НАЛЕВО');
-      cornerDistanceEl.textContent=hint.active?'В ПОВОРОТЕ':`ЧЕРЕЗ ${hint.displayDistance} м`;
-      cornerProgressEl.style.transform=`scaleX(${hint.progress})`;
+    function renderMobileReadouts(contract){
+      if(!mobileControls.matches)return;
+      for(const [action,count,empty] of [
+        ['gun',player.gunAmmo,player.gunAmmo<=0],['rocket',player.rockets,player.rockets<=0],
+        ['nitro',player.nitro,player.nitro<=0],['pulse',player.pulseCooldown>0?Math.ceil(player.pulseCooldown)+' с':'',player.pulseCooldown>0]
+      ]){
+        const button=touchButtons.get(action),counter=button.querySelector('.touch-count');
+        if(counter.textContent!==String(count))counter.textContent=count;
+        if(button.dataset.empty!==String(empty))button.dataset.empty=String(empty);
+      }
+      const event=document.getElementById('mobile-race-event');
+      const sector=sectorDetailEl.textContent?sectorDetailEl.textContent+' · '+sectorDeltaEl.textContent:'';
+      const notice=raceContractNoticeEl.textContent||(!overtakeNoticeEl.hidden&&overtakeNoticeEl.textContent)||
+        (rivalGapEl.dataset.drafting==='true'&&rivalGapTrendEl.textContent)||sector||'';
+      event.hidden=!notice;
+      if(event.textContent!==notice)event.textContent=notice;
+      if(menuOpen){
+        mobileTrackReturn.disabled=raceCountdown>0||player.destroyed||player.resetCooldown>0;
+        const stats=document.getElementById('mobile-pause-stats');
+        const rows=[`Очки ${scoreEl.textContent}`,`Лучший круг ${bestTimeEl.textContent}`];
+        if(contract)rows.push(contract.title+' · '+(contract.met?'цель выполнена':contract.progressLabel));
+        stats.textContent=rows.join(' / ');
+        stats.hidden=false;
+      }
     }
 
     function updateUI(){
@@ -2469,7 +2490,8 @@
       const hp=healthPercent(player.health/player.maxHealth*100);
       healthBar.style.width=hp+'%';
       healthBar.parentElement.setAttribute('aria-valuemax',String(player.maxHealth));
-      healthBar.parentElement.setAttribute('aria-valuenow',String(Math.ceil(player.health)));
+      healthBar.parentElement.setAttribute('aria-valuenow',String(Math.min(player.maxHealth,Math.ceil(player.health))));
+      healthBar.parentElement.setAttribute('aria-valuetext',`${Math.ceil(player.health)} HP`);
       healthTextEl.textContent=Math.ceil(player.health);
       healthTextEl.title=`${Math.ceil(player.health)} / ${player.maxHealth} HP`;
       document.body.classList.toggle('low-health',hp>0&&hp<28&&player.shieldTimer<=0);
@@ -2560,8 +2582,8 @@
       }
       updateTargetHUD();
       renderThreatIndicators();
-      if(typeof renderCornerSpotter==='function')renderCornerSpotter();
       if(typeof renderPilotTutorial==='function')renderPilotTutorial();
+      if(typeof renderMobileReadouts==='function')renderMobileReadouts(contractView);
     }
 
     function setQualityMode(mode,force=false){
@@ -2595,7 +2617,7 @@
 
     let lastTime=performance.now();
     let frameCount=0; let lastFpsTime=performance.now();
-    let uiAccumulator=0,minimapAccumulator=0,lightAccumulator=0,lastIdleRender=0;
+    let uiAccumulator=0,minimapAccumulator=0,lightAccumulator=0;
     function loop(now){
       requestAnimationFrame(loop);
       const elapsed=Math.max(0,(now-lastTime)/1000);
@@ -2632,15 +2654,14 @@
             active:!player.destroyed,near:incomingThreat<125,canPulse:player.pulseCooldown<=0,now:player.totalTime
           })){settings.tutorialShieldSeen=true;saveSettings();}
         }
-        particles.update(dt); skids.update(dt); updateShockwaves(dt);
+        particles.update(dt); updateShockwaves(dt);
 
         pickupFactory.update(bonusMeshes,time,dt);
 
         lightAccumulator+=dt;
         if(lightAccumulator>=0.2){
           lightAccumulator=0;
-          sun.position.set(player.pos.x-230,150,player.pos.z+150);
-          sun.target.position.copy(player.pos);sun.target.updateMatrixWorld();
+          placeTrackLight(player.pos);
         }
 
         uiAccumulator+=dt; minimapAccumulator+=dt;
@@ -2649,7 +2670,6 @@
       }else{
         speedFeedback.update({active:false},0);
         incomingWarningEl.classList.remove('show');
-        if(typeof cornerSpotterEl!=='undefined'&&cornerSpotterEl)cornerSpotterEl.hidden=true;
         rearviewIndicatorEl.hidden=true;
       }
       const ghostActive=activeFrame&&raceCountdown<=0&&!gameFinished&&!player.destroyed;
@@ -2679,11 +2699,7 @@
         {enabled:settings.lapGhost,quality:qualityMode,active:ghostActive});
       scenery.update(dt,player.pos,activeFrame,sceneryMotionPreference.matches);
       audio.updateEngine(Math.abs(player.speed)/drivingConfig.MAX_SPEED,canControl()&&!player.destroyed,player.nitroTimer>0,drivingAudio);
-      if(!activeFrame){
-        if(now-lastIdleRender<CONFIG.IDLE_RENDER_INTERVAL_MS)return;
-        lastIdleRender=now;
-      }
-      combatRenderer.render(scene,camera);
+      if(activeFrame)combatRenderer.render(scene,camera);
     }
     // A rotation ends old thumb contacts, even on browsers that omit pointercancel.
     // Browser toolbar resize without orientation change must not interrupt driving.
@@ -2697,7 +2713,8 @@
       speedFeedback.resize(innerWidth,innerHeight);
       camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
       renderer.setPixelRatio(Math.min(devicePixelRatio,qualityMode==='high'?1.5:1));
-      renderer.setSize(innerWidth,innerHeight);combatRenderer.render(scene,camera);
+      renderer.setSize(innerWidth,innerHeight);
+      if(gameStarted&&!paused&&!gameFinished)combatRenderer.render(scene,camera);
     });
     renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault(); paused=true; clearInputs(); setGameplayCursor(false); showMessage('⚠️ ГРАФИКА ПЕРЕЗАПУСКАЕТСЯ');});
     renderer.domElement.addEventListener('webglcontextrestored',()=>{if(gameStarted&&!gameFinished){openMenu(); showMessage('✅ ГРАФИКА ВОССТАНОВЛЕНА');}});
@@ -2708,7 +2725,7 @@
     startScreen.classList.remove('hidden');
     finishScreen.classList.add('hidden');
     updateWeaponVis();updateUI();minimap.render();updateRecordInfo();syncSettingsUI();
-    setQualityMode(settings.quality==='low'?'low':'high',true);
+    setQualityMode(initialQualityMode(),true);
     if(settings.quality==='high')qualityIndicatorEl.textContent='ГРАФИКА: ВЫСОКАЯ';
     else if(settings.quality==='low')qualityIndicatorEl.textContent='ГРАФИКА: ПРОИЗВОДИТЕЛЬНОСТЬ';
     window.addEventListener('beforeunload',()=>{saveStageCheckpoint();saveRecords();});

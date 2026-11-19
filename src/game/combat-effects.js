@@ -41,6 +41,7 @@
       ctx.putImageData(pixels,0,0);fireTexture.needsUpdate=true;
     }
     function makeBatch(name,max,map,additive){
+      const groundSmoke=name==='tireSmoke';
       const geometry=new THREE.InstancedBufferGeometry();
       geometry.setAttribute('position',plane.attributes.position);geometry.setAttribute('uv',plane.attributes.uv);geometry.setIndex(plane.index);
       const data={center:new Float32Array(max*3),tint:new Float32Array(max*3),shape:new Float32Array(max*4),motion:new Float32Array(max*3)};
@@ -49,23 +50,27 @@
       const material=new THREE.ShaderMaterial({
         uniforms:{map:{value:map}},transparent:true,depthWrite:false,blending:additive?THREE.AdditiveBlending:THREE.NormalBlending,
         vertexShader:`attribute vec3 center;attribute vec3 tint;attribute vec4 shape;attribute vec3 motion;
-          varying vec2 vUv;varying vec3 vTint;varying float vAlpha;
+          varying vec2 vUv;varying vec3 vTint;varying float vAlpha,vHeight;
           void main(){vUv=uv;vTint=tint;vAlpha=shape.w;vec4 p=modelViewMatrix*vec4(center,1.0);
             vec2 axis=(modelViewMatrix*vec4(motion,0.0)).xy;float a=shape.z;
             if(dot(axis,axis)>0.0001)a=atan(axis.y,axis.x)-1.5707963;
             vec2 q=position.xy*shape.xy;q=mat2(cos(a),sin(a),-sin(a),cos(a))*q;
+            vHeight=center.y+dot(viewMatrix[1].xy,q);
             p.xy+=q;gl_Position=projectionMatrix*p;}`,
-        fragmentShader:`uniform sampler2D map;varying vec2 vUv;varying vec3 vTint;varying float vAlpha;
-          void main(){float a=texture2D(map,vUv).a*vAlpha;if(a<0.003)discard;gl_FragColor=vec4(vTint,a);
+        fragmentShader:`uniform sampler2D map;varying vec2 vUv;varying vec3 vTint;varying float vAlpha,vHeight;
+          void main(){float a=texture2D(map,vUv).a*vAlpha;
+            ${groundSmoke?'a*=smoothstep(0.035,0.34,vHeight);':''}
+            if(a<0.003)discard;gl_FragColor=vec4(vTint,a);
             #include <tonemapping_fragment>
             #include <colorspace_fragment>
           }`
       });
-      const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.renderOrder=name==='smoke'?1:2;scene.add(mesh);
+      const mesh=new THREE.Mesh(geometry,material);mesh.frustumCulled=false;mesh.renderOrder=additive?2:1;scene.add(mesh);
       return batches[name]={max,data,geometry,material,items:[],pool:[],mesh};
     }
     makeBatch('fire',160,fireTexture,true);makeBatch('smoke',170,smokeTexture,false);
     makeBatch('spark',300,sparkTexture,true);makeBatch('glow',100,softTexture,true);
+    makeBatch('tireSmoke',144,smokeTexture,false).mesh.name='Tire smoke';
     function emit(name,pos,options={}){
       const b=batches[name],limit=high?b.max:Math.floor(b.max*0.5);
       if(b.items.length>=limit)return;
@@ -204,14 +209,173 @@
       emit('smoke',pos,{size:0.55,growth:1.4,life:0.45,color:surface==='soil'?0xb29b81:0x777479,vel:normal,alpha:0.45});
       decal(pos,normal,surface==='metal'?0.22:0.7,surface==='metal'?1.7:3,anchor);
     }
-    function nitro(car){
-      car.group.updateWorldMatrix(true,false);
-      for(const x of [-0.57,0.57]){
-        const pos=car.group.localToWorld(new THREE.Vector3(x,0.4,2.22));
-        const vel=new THREE.Vector3(0,0,1).transformDirection(car.group.matrixWorld).multiplyScalar(14);
-        emit('fire',pos,{vel,size:0.55,life:0.12,color:0x74dcff,hot:true,drag:3});
-        emit('glow',pos,{vel,size:1.3,life:0.15,color:0x168dff,alpha:0.35,drag:3});
+    const jetGeometry=new THREE.CylinderGeometry(1,1,1,12,10,true).rotateX(Math.PI/2);
+    const jetUniforms={power:{value:0},clock:{value:0},flutter:{value:1}};
+    const jetMaterial=new THREE.ShaderMaterial({
+      uniforms:jetUniforms,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+      vertexShader:`
+        uniform float power,clock,flutter;
+        varying float age,core;
+        void main(){
+          age=uv.y;
+          float wave=sin(clock*42.0-age*11.0);
+          float radius=(0.066+0.057*sin(age*3.141593))*pow(1.0-age,0.68);
+          vec2 bend=vec2(sin(clock*27.0-age*9.0),wave)*0.023*age*age*flutter;
+          vec3 p=vec3(position.xy*radius+bend,age*min(1.4,1.14*power)*(1.0+0.065*wave*flutter));
+          vec4 v=modelViewMatrix*vec4(p,1.0);
+          core=abs(dot(normalize(normalMatrix*normal),normalize(-v.xyz)));
+          gl_Position=projectionMatrix*v;
+        }`,
+      fragmentShader:`
+        uniform float power;
+        varying float age,core;
+        void main(){
+          float hot=(1.0-smoothstep(0.03,0.62,age))*mix(0.43,1.0,core);
+          vec3 flame=mix(vec3(0.025,0.27,1.05),vec3(1.9,3.1,4.1),hot);
+          float softEdge=mix(0.35,1.0,smoothstep(0.04,0.55,core));
+          gl_FragColor=vec4(flame,(1.0-smoothstep(0.20,1.0,age))*min(1.0,power)*softEdge*0.84);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`
+    });
+    const roadGlow=new THREE.Mesh(plane,new THREE.MeshBasicMaterial({map:softTexture,color:0x298dff,
+      transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending}));
+    roadGlow.rotation.x=-Math.PI/2;roadGlow.scale.set(3.3,4.6,1);roadGlow.visible=false;
+    scene.add(roadGlow);
+    const glowCenter=new THREE.Vector3(0,0,2.75);
+    let jets=[],wheelPaths=[],nitroAge=0,nitroActive=false;
+
+    // A short ring buffer draws both tire tracks in one pass, fading each segment in place.
+    const markLimit=240,markGeometry=new THREE.InstancedBufferGeometry();
+    markGeometry.setAttribute('position',plane.attributes.position);markGeometry.setIndex(plane.index);
+    const markStart=new THREE.InstancedBufferAttribute(new Float32Array(markLimit*4),4).setUsage(THREE.DynamicDrawUsage);
+    const markEnd=markStart.clone();
+    const markBirth=new THREE.InstancedBufferAttribute(new Float32Array(markLimit),1).setUsage(THREE.DynamicDrawUsage);
+    markGeometry.setAttribute('markStart',markStart);markGeometry.setAttribute('markEnd',markEnd);
+    markGeometry.setAttribute('markBirth',markBirth);markGeometry.instanceCount=0;markGeometry.setDrawRange(0,0);
+    const markClock={value:0};
+    const tireMarks=new THREE.Mesh(markGeometry,new THREE.ShaderMaterial({
+      uniforms:{clock:markClock,rubber:{value:new THREE.Color(0x18171c)}},
+      transparent:true,depthWrite:false,side:THREE.DoubleSide,forceSinglePass:true,
+      vertexShader:`
+        attribute vec4 markStart,markEnd;
+        attribute float markBirth;
+        uniform float clock;
+        varying float opacity,edge;
+        varying vec2 surface;
+        void main(){
+          vec4 joint=mix(markStart,markEnd,position.y+0.5);
+          vec2 p=joint.xy+joint.zw*position.x*0.50;
+          edge=position.x;
+          surface=p;
+          opacity=0.73*clamp((markBirth+7.5-clock)/2.5,0.0,1.0);
+          gl_Position=projectionMatrix*viewMatrix*vec4(p.x,0.049,p.y,1.0);
+        }`,
+      fragmentShader:`
+        uniform vec3 rubber;
+        varying float opacity,edge;
+        varying vec2 surface;
+        void main(){
+          float grain=fract(sin(dot(floor(surface*34.0),vec2(12.9898,78.233)))*43758.5453);
+          float a=opacity*(1.0-smoothstep(0.26,0.5,abs(edge)))*mix(0.80,1.0,grain);
+          if(a<0.002)discard;
+          gl_FragColor=vec4(rubber,a);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`
+    }));
+    tireMarks.name='Tire marks';tireMarks.frustumCulled=false;scene.add(tireMarks);
+    let markSlot=0;
+    function addTireMark(wheel,to){
+      const from=wheel.mark;
+      const dx=to.x-from.x,dz=to.z-from.z;
+      const distance=Math.hypot(dx,dz);
+      if(distance<0.001)return;
+      const sideX=-dz/distance,sideZ=dx/distance;
+      // Adjacent segments use the same cross-section at the joint.
+      markStart.setXYZW(markSlot,from.x,from.z,wheel.markJoined?wheel.sideX:sideX,wheel.markJoined?wheel.sideZ:sideZ);
+      markEnd.setXYZW(markSlot,to.x,to.z,sideX,sideZ);
+      wheel.markJoined=true;wheel.sideX=sideX;wheel.sideZ=sideZ;
+      markBirth.setX(markSlot,time);
+      markSlot=(markSlot+1)%markLimit;
+      markGeometry.instanceCount=Math.min(markLimit,markGeometry.instanceCount+1);
+      markGeometry.setDrawRange(0,6);
+      markStart.needsUpdate=markEnd.needsUpdate=markBirth.needsUpdate=true;
+    }
+
+    const sample=vector(),smokeVelocity=vector();
+    function emitTireSmoke(pos,dust,slip,forward){
+      smokeVelocity.set(forward.x*1.1+(random()-.5)*1.0,0.20+random()*.42,
+        forward.z*1.1+(random()-.5)*1.0);
+      emit('tireSmoke',pos,{vel:smokeVelocity,color:dust?0xb99a76:0xc3c7ce,
+        size:0.62+slip*0.44+random()*0.35,growth:1.3+slip*1.1,drag:2.1,
+        life:(high?.96:.59)+random()*(high?.45:.23),alpha:(dust?.54:.60)*(.52+slip*.48)});
+    }
+
+    function updateTire(wheel,slip,isAsphalt){
+      wheel.group.getWorldPosition(wheel.contact);
+      wheel.contact.y=0.25;
+      const length=wheel.contact.distanceTo(wheel.previous);
+      if(!wheel.tracking||length>16){
+        wheel.tracking=true;wheel.markJoined=false;wheel.distance=0;wheel.smoke=0.68;
+        wheel.onRoad=isAsphalt(wheel.contact);
+        wheel.previous.copy(wheel.contact);wheel.mark.copy(wheel.contact);
+        return;
       }
+      const spacing=1.10;
+      wheel.forward.subVectors(wheel.contact,wheel.previous).normalize();
+      for(let offset=spacing-wheel.distance;offset<=length;offset+=spacing){
+        sample.lerpVectors(wheel.previous,wheel.contact,offset/length);
+        const onRoad=isAsphalt(sample);
+        if(onRoad&&wheel.onRoad)addTireMark(wheel,sample);
+        else wheel.markJoined=false;
+        wheel.onRoad=onRoad;
+        wheel.mark.copy(sample);
+        wheel.smoke+=slip*spacing;
+        const interval=high?1.65:3.1;
+        if(wheel.smoke>=interval){
+          wheel.smoke-=interval;
+          emitTireSmoke(sample,!onRoad,slip,wheel.forward);
+        }
+      }
+      wheel.distance=(wheel.distance+length)%spacing;
+      wheel.previous.copy(wheel.contact);
+    }
+    function updateDriving(car,{nitro,drifting,speed,speedLat,isAsphalt},dt){
+      if(!jets.length){
+        jets=car.exhaustOutlets.map(outlet=>{
+          const jet=new THREE.Mesh(jetGeometry,jetMaterial);
+          jet.position.copy(outlet);jet.frustumCulled=false;jet.renderOrder=2;car.group.add(jet);
+          return jet;
+        });
+        wheelPaths=car.wheels.filter(wheel=>!wheel.isFront).map(({group})=>({group,
+          contact:vector(),previous:vector(),mark:vector(),forward:vector(),tracking:false}));
+      }
+      nitroAge=nitro&&nitroActive?nitroAge+dt:0;
+      nitroActive=nitro;
+      const allowMotion=!reduced();
+      jetUniforms.power.value=nitro?1+(allowMotion?0.36*Math.exp(-36*nitroAge):0)
+        :Math.max(0,jetUniforms.power.value-dt*7);
+      jetUniforms.clock.value=time;
+      jetUniforms.flutter.value=allowMotion?1:0;
+      const firing=jetUniforms.power.value>0;
+      for(const jet of jets)jet.visible=firing;
+      roadGlow.visible=high&&firing&&car.group.visible;
+      if(roadGlow.visible){
+        car.group.localToWorld(roadGlow.position.copy(glowCenter));
+        roadGlow.position.y=0.055;
+        roadGlow.material.opacity=0.19*Math.min(1,jetUniforms.power.value);
+      }
+      const slip=Math.min(1,Math.max(0,(Math.abs(speedLat)-.55)/7.5))*Math.min(1,speed/28);
+      for(const wheel of wheelPaths){
+        if(drifting&&slip>0.04)updateTire(wheel,slip,isAsphalt);
+        else wheel.tracking=false;
+      }
+    }
+    function resetDriving(){
+      nitroActive=false;nitroAge=0;jetUniforms.power.value=0;roadGlow.visible=false;
+      for(const jet of jets)jet.visible=false;
+      for(const wheel of wheelPaths)wheel.tracking=false;
     }
     function spawn(pos,tint,count,speed,life,size,gravity,glow){
       const name=glow?'spark':'smoke';
@@ -219,11 +383,13 @@
     }
     function update(dt){
       time+=dt;
+      markClock.value=time;
       for(const [name,b] of Object.entries(batches)){
+        const smoke=name==='smoke'||name==='tireSmoke';
         for(let i=b.items.length-1;i>=0;i--){
           const p=b.items[i];p.age+=dt;p.life-=dt;
           if(p.life<=0){b.items.splice(i,1);b.pool.push(p);continue;}
-          p.vel.multiplyScalar(Math.exp(-p.drag*dt));p.vel.y+=(name==='smoke'?1.7:-p.gravity)*dt;
+          p.vel.multiplyScalar(Math.exp(-p.drag*dt));p.vel.y+=(name==='tireSmoke'?0.75:smoke?1.7:-p.gravity)*dt;
           if(p.anchor){p.anchor.updateWorldMatrix(true,false);p.pos.copy(p.local);p.anchor.localToWorld(p.pos);}else p.pos.addScaledVector(p.vel,dt);
           if(p.bounce&&p.pos.y<0.12){p.pos.y=0.12;p.vel.y=Math.abs(p.vel.y)*0.28;p.vel.x*=0.6;p.vel.z*=0.6;}
           p.rotation+=p.spin*dt;
@@ -235,7 +401,8 @@
           b.data.center.set([p.pos.x,p.pos.y,p.pos.z],j);
           color.copy(p.tint);if(p.hot)color.multiplyScalar(1+fade*2.2);
           b.data.tint.set([color.r,color.g,color.b],j);
-          b.data.shape.set([extent,extent+(p.stretch?p.vel.length()*p.stretch:0),p.rotation,p.alpha*Math.pow(Math.min(1,fade),name==='smoke'?0.8:1.3)*Math.min(1,visibleAge/(name==='smoke'?0.14:0.015))],k);
+          const fadeIn=name==='tireSmoke'?0.065:smoke?0.14:0.015;
+          b.data.shape.set([extent,extent+(p.stretch?p.vel.length()*p.stretch:0),p.rotation,p.alpha*Math.pow(Math.min(1,fade),smoke?0.8:1.3)*Math.min(1,visibleAge/fadeIn)],k);
           b.data.motion.set(p.stretch?[p.vel.x,p.vel.y,p.vel.z]:[0,0,0],j);
         }
         b.geometry.instanceCount=b.items.length;
@@ -250,6 +417,8 @@
       drawTrails(dt);
     }
     function clear(){
+      resetDriving();
+      markSlot=0;markGeometry.instanceCount=0;markGeometry.setDrawRange(0,0);
       for(const b of Object.values(batches)){b.pool.push(...b.items);b.items.length=0;b.geometry.instanceCount=0;}
       trails.length=0;ribbonGeo.setDrawRange(0,0);
       debris.length=0;debrisMesh.count=0;
@@ -258,8 +427,17 @@
       for(const r of recoils){r.weapon.position.z=r.z;r.amount=0;}
       for(const e of lights){e.life=0;e.light.intensity=0;}
     }
-    return {spawn,update,clear,burst,impact,explosion,shield,muzzle,nitro,createTrail,moveTrail,
-      detachTrail(trail){if(trail)trail.detached=true;},setQuality(mode){high=mode==='high';if(!high)for(const b of Object.values(batches))while(b.items.length>Math.floor(b.max/2))b.pool.push(b.items.pop());},
+    return {spawn,update,clear,burst,impact,explosion,shield,muzzle,updateDriving,resetDriving,createTrail,moveTrail,
+      detachTrail(trail){if(trail)trail.detached=true;},
+      setQuality(mode){
+        high=mode==='high';
+        if(high)return;
+        roadGlow.visible=false;
+        for(const b of Object.values(batches)){
+          while(b.items.length>Math.floor(b.max/2))b.pool.push(b.items.pop());
+          b.geometry.instanceCount=b.items.length;
+        }
+      },
       stats(){return {particles:Object.values(batches).reduce((n,b)=>n+b.items.length,0),trails:trails.length,marks:marks.length,ripples:ripples.length,debris:debris.length,lights:lights.filter(e=>e.life>0).length};}};
   };
 

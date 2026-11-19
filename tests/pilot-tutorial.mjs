@@ -19,7 +19,7 @@ assert.equal(t.observeDrive({throttle:0.6,speed:12},1),'advanced');
 assert.equal(t.state().stage,1);
 assert.equal(display(1,'touch').key,'ПУЛИ');
 assert.match(display(1,'gamepad').key,/X/);
-assert.match(display(1,'keyboard',{ammo:0}).detail,/Патроны закончились/);
+assert.match(display(1,'keyboard',{ammo:0}).detail,/Подбери патроны/);
 assert.equal(t.action('gun',2),'advanced');
 assert.equal(t.state().stage,2);
 assert.equal(display(2,'touch').key,'НИТРО');

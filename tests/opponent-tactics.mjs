@@ -167,7 +167,8 @@ const c={canControl:()=>true,opponents:[bot],gameFinished:false,
   CONFIG:{ROAD_HALF:40,CAR_RADIUS:3.8,MAX_SPEED:52,TOTAL_LAPS:15,NUM_SAMPLES:600,BOT_MIN_RUBBER_BAND:.88,BOT_MAX_RUBBER_BAND:1.12},
   bonusMeshes:[{...health,group:{position:new Vector(-11,0,270)}}],removeBonusAt(i){c.bonusMeshes.splice(i,1);},
   segmentSphereHit:require('../src/weapons/geometry.js').segmentSphereHit3D,
-  canBenefitFromPickup:require('../src/game/pickup-rules.js').canBenefitFromPickup,
+  applyPickup:require('../src/game/pickup-rules.js').applyPickup,updateWeaponVis(){},
+  startGrid:require('../src/game/race-state.js').createRaceGrid(1000,40,6),
   THREE:{Vector3:Vector,MathUtils:{clamp:(n,a,b)=>Math.max(a,Math.min(b,n))}},camera:{position:new Vector()},
   trackCurve:{getPointAt:t=>new Vector(0,0,t*1000),getTangentAt:()=>new Vector(0,0,1)},
   difficulty:()=>({botSpeed:1}),findClosest:()=>({idx:0,t:bot.t}),Math,
@@ -184,6 +185,9 @@ assert.equal(bot.tacticalPlan.goal,'resupply');assert.ok(bot.t>.2&&bot.offset>0)
 assert.ok(Math.abs(bot.speed-45*(1+.01*.08))<1e-9,'motion output, including rubber band, is stored for next snapshot');
 c.canControl=()=>false;const oldT=bot.t;c.updateOpponents(1);assert.equal(bot.t,oldT,'pause freezes AI');
 c.respawnOpponent(bot);assert.equal(bot.tacticalPlan,null,'respawn drops old plan');assert.equal(bot.speed,bot.baseSpeed);
+assert.equal(bot.t,c.startGrid[bot.id+1].t,'destroyed rival returns to the finish');
+assert.equal(bot.offset,c.startGrid[bot.id+1].offset,'rivals have separate slots');
+assert.equal(bot.lap,1,'respawn awards no lap');
 // An AI car must collect an item crossed between consecutive sampled positions.
 c.canControl=()=>true;bot.health=20;bot.car.group.position.set(4,0,5.5);
 bot.pickupSweepStart={x:-4,y:0,z:5.5};

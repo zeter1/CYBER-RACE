@@ -133,6 +133,10 @@ const mixed=resolveDrivingInput({KeyW:true,ShiftLeft:true},{left:true},
 assert.deepEqual(mixed,{throttle:1,brake:0.5,steering:-0.5,handbrake:true},
   'keyboard/touch keep priority and analog pad remains available');
 assert.equal(resolveDrivingInput({'ц':true},{},{},true).throttle,1,'Russian keyboard layout still accelerates');
+assert.equal(resolveDrivingInput({}, {left:true,gun:true}, {}, true, true).throttle,1,'auto gas frees the steering and fire fingers');
+assert.deepEqual(resolveDrivingInput({}, {backward:true}, {}, true, true),
+  {throttle:0,brake:1,steering:0,handbrake:false},'brake and reverse override auto gas');
+assert.equal(resolveDrivingInput({}, {}, {}, false, true).throttle,0,'blocked gameplay disables auto gas');
 assert.deepEqual(resolveDrivingInput({KeyW:true},{forward:true},{throttle:1,steer:1},false),
   {throttle:0,brake:0,steering:0,handbrake:false},'menu/input guards must block all devices');
 console.log('ANALOG_GAMEPAD_INPUT_PASS 0/25/50/100%, deadzone, digital fallback, disconnect and 30/60/144 FPS');
@@ -140,14 +144,19 @@ console.log('ANALOG_GAMEPAD_INPUT_PASS 0/25/50/100%, deadzone, digital fallback,
 // Rear glance points backwards without changing the driving axes or the regular chase pose.
 for(const heading of [0,Math.PI/2,Math.PI,-Math.PI/2]){
   const car={x:12,y:0,z:-5,heading};
-  const view={back:20,height:8,lookAhead:12};
+  const view={back:12.8,height:4.45,lookAhead:14};
   const forward=cameraViewPose(car,view,false),rear=cameraViewPose(car,view,true);
   const dot=point=>(point.x-car.x)*Math.sin(heading)+(point.z-car.z)*Math.cos(heading);
-  assert.ok(dot(forward.position)<-18&&dot(forward.look)>11,'regular chase faces the road');
+  assert.ok(dot(forward.position)<-12&&dot(forward.look)>13,'close chase faces the road');
+  const lateral=point=>(point.x-car.x)*Math.cos(heading)-(point.z-car.z)*Math.sin(heading);
+  assert.ok(Math.abs(lateral(forward.position))<1e-9,'close chase is centered behind the car');
   assert.ok(dot(rear.position)>13&&dot(rear.look)<-11,'rear glance looks behind the car');
-  assert.equal(forward.position.y,8,'regular chase height preserved');
-  assert.equal(forward.look.y,1.65,'regular aim preserved');
-  assert.deepEqual(cameraViewPose(car,view,false),forward,'same input gives same camera target');
+  assert.equal(forward.position.y,4.45,'lower chase height');
+  assert.equal(forward.look.y,0.45,'keeps the car above the lower HUD');
+  assert.deepEqual(cameraViewPose(car),forward,'restart and initial chase framing agree');
+  const portrait=cameraViewPose(car,view,false,390/844);
+  assert.ok(dot(portrait.position)<dot(forward.position)-6,'portrait pulls back to keep the car in frame');
+  assert.ok(dot(portrait.look)<dot(forward.look)&&portrait.position.y>forward.position.y);
 }
 pad.buttons[5].pressed=true;
 assert.equal(readStandardGamepad(pad).mirror,true,'RB holds rear glance');
@@ -238,7 +247,7 @@ for (const [seconds, text] of [[0,'00:00.0'],[60.4,'01:00.4'],[59.99,'00:59.9'],
 }
 
 const third=race.resolveLapCompletion({lap:3,curLap:42,bestLap:50,totalLaps:15});
-assert.equal(third.lap,4);assert.equal(third.bestLap,42);assert.equal(third.grantCombatPack,true);assert.equal(third.finished,false);
+assert.equal(third.lap,4);assert.equal(third.bestLap,42);assert.equal(third.grantLapBonus,true);assert.equal(third.finished,false);
 const final=race.resolveLapCompletion({lap:15,curLap:40,bestLap:39,totalLaps:15});
 assert.equal(final.finished,true);assert.equal(final.lap,15);assert.equal(final.scoreDelta,50);
 
@@ -253,12 +262,12 @@ const rest=feedbackFor({...feedbackInput,speed:0});
 const fast=feedbackFor(feedbackInput);
 const nitroView=feedbackFor({...feedbackInput,speed:80.6,nitro:true});
 assert.equal(rest.fov,58);assert.equal(rest.flow,0);assert.equal(rest.vibration,0);
-assert.ok(fast.fov>69&&fast.fov<71&&fast.height<10&&fast.flow>0.5);
-assert.equal(rest.back,18.5,'closer parked chase camera');
-assert.equal(rest.height,8,'rear-quarter camera height');
-assert.equal(rest.lookAhead,13,'look ahead preserves the road');
-assert.ok(fast.back>19.9&&fast.back<20.1&&fast.height<8&&fast.height>7.3,'speed changes framing without jumping');
-assert.ok(nitroView.fov>fast.fov+4&&nitroView.fov<82&&nitroView.flow>fast.flow);
+assert.ok(fast.fov>63&&fast.fov<65&&fast.flow>0.5);
+assert.equal(rest.back,12.8,'closer parked chase camera');
+assert.equal(rest.height,4.45,'lower chase camera height');
+assert.equal(rest.lookAhead,14,'look ahead preserves the road');
+assert.ok(fast.back>13.6&&fast.back<13.8&&fast.height<4.45&&fast.height>4,'speed changes framing without jumping');
+assert.ok(nitroView.fov>fast.fov+2&&nitroView.fov<70&&nitroView.flow>fast.flow);
 assert.equal(feedbackFor({...feedbackInput,speed:-10}).flow,0,'reverse must not look like nitro');
 assert.equal(feedbackFor({...feedbackInput,speed:0,nitro:true}).boost,0,'nitro at rest must not create speed');
 for(const fps of [30,60,144]){
@@ -312,7 +321,10 @@ const inputContext={
   player:{destroyed:false,resetCooldown:0},CONFIG,keys:inputKeys,
   activateDefensePulse(){actions.pulse++;},respawnPlayer(){actions.reset++;},activateNitro(){}
 };
-vm.runInNewContext(inputSource.slice(inputStart,inputEnd),inputContext);
+const returnStart=inputSource.indexOf('    function returnCarToTrack(){');
+const returnEnd=inputSource.indexOf('\n    }',returnStart)+6;
+assert.ok(returnStart>=0&&returnEnd>returnStart);
+vm.runInNewContext(inputSource.slice(returnStart,returnEnd)+'\n'+inputSource.slice(inputStart,inputEnd),inputContext);
 const keyEvent=(code,key,repeat=false)=>({code,key,repeat,target:null,preventDefault(){}});
 for(const [code,key] of [['KeyM','ь'],['KeyT','е'],['KeyR','к'],['KeyF','а'],['KeyQ','й']])handlers.keydown(keyEvent(code,key));
 assert.equal(inputContext.settings.sound,false,'mute must work in Russian layout');

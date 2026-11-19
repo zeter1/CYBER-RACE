@@ -15,21 +15,26 @@
   // Keep stage lengths and sample count in sync with championship.js and CONFIG.NUM_SAMPLES.
   const STAGES=Object.freeze([{id:'valley',laps:3},{id:'city',laps:4},{id:'industrial',laps:5}]);
   const SAMPLE_COUNT=600;
-  const playerTimers=['regenDelay','nitroTimer','speedBoostTimer','shieldTimer','pulseCooldown','invincibleTimer','resetCooldown','damageCooldown','wrongWayTimer','stuckTimer','driftTime','comboTimer','deathTimer'];
-  const botTimers=['slowTimer','nitroTimer','speedBoostTimer','shieldTimer','invincibleTimer','lastAttackerTimer'];
+  const playerTimers=['regenDelay','nitroTimer','pulseCooldown','invincibleTimer','resetCooldown','damageCooldown','wrongWayTimer','stuckTimer','driftTime','comboTimer','deathTimer'];
+  const botTimers=['slowTimer','nitroTimer','invincibleTimer','lastAttackerTimer'];
+  const playerSupplies=['rockets','gunAmmo','nitro'];
+  const botSupplies=['rockets','gunAmmo','nitroCharges'];
+  const stackedTimers=['speedBoostTimer','shieldTimer'];
+  const playerStateNumbers=playerNumbers.filter(key=>key!=='health'&&!playerSupplies.includes(key)&&!stackedTimers.includes(key));
+  const botStateNumbers=botNumbers.filter(key=>key!=='health'&&!botSupplies.includes(key)&&!stackedTimers.includes(key));
   const validNumbers=(data,names)=>data&&typeof data==='object'&&names.every(key=>Number.isFinite(data[key])&&Math.abs(data[key])<=1e7);
   const inWorld=(...values)=>values.every(value=>Number.isFinite(value)&&Math.abs(value)<=WORLD_LIMIT);
   const validTimers=(data,names)=>names.every(key=>data[key]>=0&&data[key]<=3600);
   const validSample=value=>Number.isSafeInteger(value)&&value>=0&&value<SAMPLE_COUNT;
-  const validAmmo=(data,limits)=>Object.entries(limits).every(([key,limit])=>
-    Number.isSafeInteger(data[key])&&data[key]>=0&&data[key]<=limit);
+  const validSupplies=(data,names)=>names.every(key=>Number.isSafeInteger(data[key])&&data[key]>=0)
+    &&stackedTimers.every(key=>Number.isFinite(data[key])&&data[key]>=0);
   // Optional for older V1 checkpoints; new saves persist awarded opponent ids (0..5).
   const validOvertakeAwards=ids=>Array.isArray(ids)&&ids.length<=6&&
     [...ids].every(id=>Number.isSafeInteger(id)&&id>=0&&id<6)&&new Set(ids).size===ids.length;
   function validCheckpoint(data,match){
     if(!data||data.version!==1||!match||data.stageIndex!==match.stageIndex||data.trackId!==match.trackId||
        data.buildKey!==match.buildKey||data.signature!==match.signature||!Number.isFinite(data.savedAt)||
-       !validNumbers(data.player,playerNumbers)||!(data.player.bestLap===null||(Number.isFinite(data.player.bestLap)&&data.player.bestLap>=0))||
+       !validNumbers(data.player,playerStateNumbers)||!(data.player.bestLap===null||(Number.isFinite(data.player.bestLap)&&data.player.bestLap>=0))||
        typeof data.player.crossedHalf!=='boolean'||typeof data.player.destroyed!=='boolean'||
        !Array.isArray(data.bots)||data.bots.length!==6||
        !Array.isArray(data.bonuses)||data.bonuses.length>60||
@@ -41,7 +46,7 @@
     if(!Number.isSafeInteger(data.stageIndex)||!stage||stage.id!==data.trackId)return false;
     if(!Number.isSafeInteger(data.player.lap)||data.player.lap<1||data.player.lap>stage.laps||
        data.player.prevT<0||data.player.prevT>1||!validSample(data.player.lastSampleIdx)||
-       data.player.health<0||data.player.health>250||
+       !Number.isFinite(data.player.health)||data.player.health<0||
        data.player.speed< -20||data.player.speed>250||Math.abs(data.player.speedLat)>50||
        Math.abs(data.player.steerAngle)>2||
        data.player.curLap<0||data.player.curLap>86400||
@@ -50,15 +55,15 @@
        data.player.score<0||data.player.kills<0||data.player.deaths<0||
        !validTimers(data.player,playerTimers)||
        !inWorld(data.player.x,data.player.z)||
-       !validAmmo(data.player,{rockets:9,gunAmmo:99,nitro:5}))return false;
-    if(data.bots.some((bot,id)=>!validNumbers(bot,botNumbers)||bot.id!==id||
+       !validSupplies(data.player,playerSupplies))return false;
+    if(data.bots.some((bot,id)=>!validNumbers(bot,botStateNumbers)||bot.id!==id||
        !Number.isSafeInteger(bot.lap)||bot.lap<1||bot.lap>stage.laps+1||
        bot.t<0||bot.t>1||bot.prevT<0||bot.prevT>1||!validSample(bot.lastSampleIdx)||
        bot.speed<0||bot.speed>250||bot.baseSpeed<0||bot.baseSpeed>250||
-       bot.health>125||bot.health< -1000||(!bot.dead&&bot.health<0)||
+       !Number.isFinite(bot.health)||bot.health< -1000||(!bot.dead&&bot.health<0)||
        !validTimers(bot,botTimers)||
        !inWorld(bot.offset,bot.targetOffset,bot.bumpOffset)||
-       !validAmmo(bot,{rockets:9,gunAmmo:99,nitroCharges:5})||
+       !validSupplies(bot,botSupplies)||
        !['dead','finished','crossedHalf'].every(k=>typeof bot[k]==='boolean')))return false;
     if(data.bonuses.some(b=>!b||typeof b!=='object'||!bonusTypes.has(b.type)||!Number.isSafeInteger(b.id)||b.id<0||b.id>1e7||
        !Number.isFinite(b.t)||b.t<0||b.t>1||!inWorld(b.x,b.z,b.offset)))return false;

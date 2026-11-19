@@ -14,9 +14,10 @@ const loopSource=source.slice(begin,end);
 
 function simulateFrameLoop(timestamps){
   const samples=[];
+  let drawnFrames=0;
   const state={
-    lastTime:0,lastFpsTime:0,frameCount:0,uiAccumulator:0,minimapAccumulator:0,lightAccumulator:0,lastIdleRender:0,
-    paused:false,gameStarted:true,gameFinished:false,raceCountdown:3,CONFIG:{IDLE_RENDER_INTERVAL_MS:66},
+    lastTime:0,lastFpsTime:0,frameCount:0,uiAccumulator:0,minimapAccumulator:0,lightAccumulator:0,
+    paused:false,gameStarted:true,gameFinished:false,raceCountdown:3,
     qualityMode:'high',settings:{lapGhost:true},lapGhost:{poseAt(){return null;},paceAt(){return null;},snapshot(){return {bestTime:null};}},lapGhostBadge:{hidden:true},lapGhostBadgeTime:{textContent:''},lapGhostBadgePace:{textContent:'',dataset:{}},lapGhostPaceLastTime:-Infinity,lapGhostPaceDelta:null,lapGhostVisual:{update(){}},
     requestAnimationFrame(){},fpsEl:{textContent:''},measureFrameRate,lowFpsWindows:1,highFpsWindows:2,
     updateAdaptiveQuality(value){samples.push(value);},
@@ -26,8 +27,8 @@ function simulateFrameLoop(timestamps){
     audio:{updateEngine(){}},drivingConfig:{MAX_SPEED:52},canControl:()=>true,drivingAudio:{},
     particles:{update(){}},skids:{update(){}},updateShockwaves(){},
     pickupFactory:{update(){}},bonusMeshes:[],scenery:{update(){}},sceneryMotionPreference:{matches:false},speedFeedback:{update(){}},
-    sun:{position:{set(){}},target:{position:{copy(){}},updateMatrixWorld(){}}},
-    minimap:{render(){}},updateUI(){},combatRenderer:{render(){}},scene:{},camera:{}
+    placeTrackLight(){},
+    minimap:{render(){}},updateUI(){},combatRenderer:{render(){drawnFrames++;}},scene:{},camera:{}
   };
   vm.createContext(state);
   vm.runInContext(loopSource,state);
@@ -35,13 +36,15 @@ function simulateFrameLoop(timestamps){
     if(typeof entry==='number')state.loop(entry);
     else{state.paused=entry.paused;state.loop(entry.time);}
   }
-  return {hud:state.fpsEl.textContent,samples,frameCount:state.frameCount,
+  return {hud:state.fpsEl.textContent,samples,frameCount:state.frameCount,drawnFrames,
     lowFpsWindows:state.lowFpsWindows,highFpsWindows:state.highFpsWindows,lastFpsTime:state.lastFpsTime};
 }
 
 // The final frame arrives after a half-second stall: 60 callbacks over 1500 ms = 40 FPS.
 const timestamps=Array.from({length:59},(_,i)=>(i+1)*990/59).concat(1500);
 const result=simulateFrameLoop(timestamps);
+assert.equal(simulateFrameLoop([{time:500,paused:true},{time:1000,paused:true},{time:1016,paused:false}]).drawnFrames,1,
+  'pause skips WebGL submission and resume draws the next active frame');
 assert.equal(result.hud,'FPS: 40','FPS counter must divide frame count by actual wall time');
 assert.ok(Math.abs(result.samples[0]-40)<0.001,'adaptive quality must receive actual, unrounded FPS');
 console.log('FPS_ACTUAL_RUNTIME_LOOP_PASS wall-time normalization after delayed frame');

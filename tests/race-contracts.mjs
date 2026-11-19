@@ -3,29 +3,23 @@ import {createRequire} from 'node:module';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const require=createRequire(import.meta.url);
-const {canBenefitFromPickup}=require('../src/game/pickup-rules.js');
+const {applyPickup}=require('../src/game/pickup-rules.js');
 const {RACE_CONTRACTS,RACE_CONTRACT_CREDITS,getRaceContractDefinition,createRaceContractTracker}=require('../src/game/race-contracts.js');
 const {segmentSphereHit3D}=require('../src/weapons/geometry.js');
 
 const full={rockets:9,gunAmmo:99,nitro:5,nitroCharges:5,health:161,
   shieldTimer:7,speedBoostTimer:10};
 for(const type of ['rocket','machinegun','nitro','health','shield','speedboost']){
-  assert.equal(canBenefitFromPickup(type,full,{maxHealth:161}),false,type+' at cap stays');
+  assert.equal(applyPickup(type,full),true,type+' at old cap');
 }
-assert.equal(canBenefitFromPickup('rocket',{...full,rockets:8}),true);
-assert.equal(canBenefitFromPickup('machinegun',{...full,gunAmmo:98}),true);
-assert.equal(canBenefitFromPickup('nitro',{...full,nitro:4}),true);
-assert.equal(canBenefitFromPickup('health',{...full,health:160},{maxHealth:161}),true);
-assert.equal(canBenefitFromPickup('shield',{...full,shieldTimer:6.9}),true);
-assert.equal(canBenefitFromPickup('speedboost',{...full,speedBoostTimer:9.9}),true);
-assert.equal(canBenefitFromPickup('health',full,{maxHealth:161}),false);
-assert.equal(canBenefitFromPickup('rocket',{...full,rockets:8.5}),true);
-assert.equal(canBenefitFromPickup('banana',full),false);
+assert.deepEqual(full,{rockets:11,gunAmmo:129,nitro:6,nitroCharges:5,health:201,shieldTimer:14,speedBoostTimer:20});
+assert.equal(applyPickup('banana',full),false);
 const ai={...full,health:100,nitroCharges:5,shieldTimer:5,speedBoostTimer:8};
 for(const type of ['rocket','machinegun','nitro','health','shield','speedboost']){
- assert.equal(canBenefitFromPickup(type,ai,{nitroKey:'nitroCharges',shieldDuration:5,speedBoostDuration:8}),false,'AI '+type+' full');
+ assert.equal(applyPickup(type,ai,{nitroKey:'nitroCharges',shieldDuration:5,speedBoostDuration:8}),true,'AI '+type+' at old cap');
 }
-assert.equal(canBenefitFromPickup('nitro',{...ai,nitroCharges:4},{nitroKey:'nitroCharges'}),true);
+assert.deepEqual([ai.rockets,ai.gunAmmo,ai.nitroCharges,ai.shieldTimer,ai.speedBoostTimer],[13,159,6,10,16]);
+assert.equal(ai.health,140,'AI repair can add health above its initial 100');
 
 assert.deepEqual(Object.keys(RACE_CONTRACTS),['hunter','collector','podium']);
 assert.equal(getRaceContractDefinition('hunter','blitz').target,1,'blitz hunter goal');
@@ -94,7 +88,7 @@ const collect=src.slice(src.indexOf('    function checkBonuses(){'),src.indexOf(
 const state={
   canControl:()=>true,player:{pos:{x:0,y:0,z:0},maxHealth:161,health:161,
     rockets:9,gunAmmo:99,nitro:5,shieldTimer:7,speedBoostTimer:10,destroyed:false},
-  pickupSweepStart:{x:0,y:0,z:0},bonusMeshes:[],canBenefitFromPickup,segmentSphereHit:segmentSphereHit3D,
+  pickupSweepStart:{x:0,y:0,z:0},bonusMeshes:[],applyPickup,segmentSphereHit:segmentSphereHit3D,
   CONFIG:{SHIELD_DURATION:7},raceContractTracker:collector,
   healPlayerHealth:(health,max,add)=>Math.min(max,health+add),
   updateWeaponVis(){},showMessage(){},audio:{play(){}},
@@ -110,12 +104,14 @@ const state={
 state.player.pos.clone=()=>({x:0,y:0,z:0});
 vm.createContext(state);
 vm.runInContext(collect,state);
+collector.start('collector');
 for(const type of ['health','rocket','shield']){
  state.bonusMeshes.push({type,group:{position:{x:0,y:0,z:0}}});
  state.checkBonuses();
- assert.equal(state.bonusMeshes.length,1,'full '+type+' not consumed in actual runtime');
- state.bonusMeshes.length=0;
+ assert.equal(state.bonusMeshes.length,0,'full '+type+' consumed exactly once in actual runtime');
 }
+assert.equal(collector.status().progress,3,'overhealth repair adds contract progress');
+assert.equal(state.player.rockets,11);assert.equal(state.player.shieldTimer,14);assert.equal(state.player.health,201);
 collector.start('collector');
 state.player.health=120;
 state.bonusMeshes.push({type:'health',group:{position:{x:0,y:0,z:0}}});
@@ -123,4 +119,4 @@ state.checkBonuses();
 assert.equal(state.player.health,160);
 assert.equal(state.bonusMeshes.length,0);
 assert.equal(collector.status().progress,1);
-console.log('USEFUL_PICKUPS_AND_RACE_CONTRACTS_PASS caps, AI, optional targets, once-only credits, actual runtime pickup');
+console.log('USEFUL_PICKUPS_AND_RACE_CONTRACTS_PASS uncapped supplies, stacked timers, AI, actual runtime pickups and contracts');

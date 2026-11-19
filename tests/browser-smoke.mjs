@@ -46,13 +46,27 @@ function chromeBinary(){
  }
  throw Error('Chrome/Chromium executable not found');
 }
-const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.wav':'audio/wav','.ogg':'audio/ogg'};
+ const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json','.png':'image/png','.webp':'image/webp','.wav':'audio/wav','.ogg':'audio/ogg'};
 const server=createServer(async(req,res)=>{
  try{
   const pathname=decodeURIComponent(new URL(req.url,'http://127.0.0.1').pathname);
   const file=resolve(root,'.'+pathname,(pathname.endsWith('/')?'index.html':''));
   if(file!==root&&!file.startsWith(root+sep)){res.writeHead(403).end();return;}
-  const bytes=await readFile(file);
+  let bytes=await readFile(file);
+  if(pathname==='/src/game/runtime.js'){
+   const ready="document.documentElement.dataset.cyberBoot='ready';";
+   const source=bytes.toString('utf8');
+   assert(source.includes(ready),'test pickup hook needs the production ready marker');
+   bytes=source.replace(ready,`window.__qaCollectWeapons=()=>{
+     pickupSweepStart.copy(player.pos);
+     for(const type of ['machinegun','rocket']){
+       const group=createBonusIcon(type);
+       group.position.copy(player.pos).setY(2.2);scene.add(group);
+       bonusMeshes.push({type,group});
+     }
+     checkBonuses();updateUI();
+   };\n`+ready);
+  }
   res.writeHead(200,{'content-type':types[extname(file)]||'application/octet-stream','cache-control':'no-store'}).end(bytes);
  }catch{res.writeHead(404).end();}
 });
@@ -98,7 +112,7 @@ async function verifyAuxiliaryHudLane(){
     return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,visible:s.display!=='none'&&s.visibility!=='hidden'&&r.width>0&&r.height>0};};
    const overlap=(a,b)=>a.left<b.right-1&&a.right>b.left+1&&a.top<b.bottom-1&&a.bottom>b.top+1;
    const performance=rect('hud-performance'),escapeHint=rect('esc-hint');
-   const blockers=['right-hud','speed-panel','hud','overtake-series','corner-spotter','pilot-tutorial','sector-timing'];
+   const blockers=['right-hud','speed-panel','hud','overtake-series','pilot-tutorial','sector-timing'];
    return {performance,escapeHint,collisions:[performance,escapeHint].flatMap((r,i)=>r.visible?blockers.filter(id=>{
     const b=rect(id);return b.visible&&overlap(r,b);
    }).map(id=>(i?'esc-hint':'hud-performance')+' / '+id):[]),
@@ -120,7 +134,7 @@ async function verifyAuxiliaryHudLane(){
 
 async function verifyMobileCockpit(){
  await cdp('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:5});
- const viewports=[[390,844],[360,640],[844,390],[740,360],[768,844]];
+ const viewports=[[390,844],[360,640],[320,568],[844,390],[740,360],[667,320],[568,320],[768,844]];
  const setViewport=async(width,height)=>{
   await cdp('Emulation.setDeviceMetricsOverride',{
    width,height,deviceScaleFactor:2,mobile:true,screenWidth:width,screenHeight:height,
@@ -140,7 +154,7 @@ async function verifyMobileCockpit(){
  for(const [width,height] of viewports){
   await setViewport(width,height);
   const layout=JSON.parse(await evalJS(`JSON.stringify((()=>{
-   const ids=['#touch-controls [data-touch]','#minimap-canvas','#speed-panel','#hud','#sector-timing','#pilot-tutorial','#vehicle-status','#right-hud','#race-contract-hud','#overtake-series','#corner-spotter'];
+    const ids=['#touch-controls [data-touch]','#minimap-canvas','#speed-panel','#race-clock','#race-feed','#vehicle-status','#right-hud'];
    const buttons=[...document.querySelectorAll('[data-touch]')];
    const rect=node=>{const b=node.getBoundingClientRect();return {left:b.left,top:b.top,right:b.right,bottom:b.bottom,width:b.width,height:b.height};};
    const visible=node=>{const css=getComputedStyle(node);return css.display!=='none'&&css.visibility!=='hidden'&&node.getBoundingClientRect().width>0;};
@@ -168,31 +182,24 @@ async function verifyMobileCockpit(){
   for(let i=0;i<layout.buttons.length;i++)
    for(let j=i+1;j<layout.buttons.length;j++)
     assert.ok(!overlaps(layout.buttons[i],layout.buttons[j]),'touch targets intersect at '+width+'x'+height);
-  const map=layout.objects['#minimap-canvas'],speed=layout.objects['#speed-panel'],hud=layout.objects['#hud'];
-  assert.ok(!overlaps(map,speed)&&!overlaps(map,hud)&&!overlaps(speed,hud),'bottom instruments overlap at '+width+'x'+height);
-  for(const id of ['#pilot-tutorial','#sector-timing','#overtake-series']){
-   if(!layout.objects[id])continue;
-   for(const [otherId,other] of Object.entries(layout.objects)){
-    if(id===otherId)continue;
-    assert.ok(!overlaps(layout.objects[id],other),id+' overlaps '+otherId+' at '+width+'x'+height);
-   }
-  }
+  const panels=Object.entries(layout.objects);
+  assert.ok(layout.objects['#race-clock']&&layout.objects['#minimap-canvas'],'race readouts missing at '+width+'x'+height);
+  panels.forEach(([id,a],index)=>panels.slice(index+1).forEach(([otherId,b])=>
+   assert.ok(!overlaps(a,b),id+' overlaps '+otherId+' at '+width+'x'+height)));
   assert.ok(layout.meta.includes('viewport-fit=cover'),'safe-area viewport configuration absent');
  }
  await setViewport(740,360);
- const optional=JSON.parse(await evalJS(`JSON.stringify((()=>{
-  const panel=document.getElementById('overtake-series'),notice=document.getElementById('overtake-event');
-  const wasPanelHidden=panel.hidden,wasNoticeHidden=notice.hidden,oldText=notice.textContent;
-  panel.hidden=false;notice.hidden=false;notice.textContent='ЧИСТЫЙ ОБГОН +20';
-  const box=el=>{const r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-  const result={overtake:box(panel),sector:box(document.getElementById('sector-timing')),
-   laps:box(document.getElementById('hud')),tutorial:box(document.getElementById('pilot-tutorial'))};
-  panel.hidden=wasPanelHidden;notice.hidden=wasNoticeHidden;notice.textContent=oldText;
-  return result;
- })())`));
- const collides=(a,b)=>a.left<b.right-1&&a.right>b.left+1&&a.top<b.bottom-1&&a.bottom>b.top+1;
- for(const name of ['sector','laps','tutorial'])assert.ok(!collides(optional.overtake,optional[name]),'expanded overtake popup overlaps '+name+' at 740x360: '+JSON.stringify(optional));
- console.log('MOBILE_OPTIONAL_HUD_PASS '+JSON.stringify(optional));
+ const visibleNotices=await evalJS(`(()=>{
+    const feed=document.getElementById('race-feed');
+    const rocket=feed.querySelector('#incoming-warning'),wrong=feed.querySelector('#wrong-way');
+    const original=[rocket.className,wrong.className];
+    rocket.classList.add('show');wrong.classList.add('show');
+    const visible=[...feed.children].filter(node=>node.getClientRects().length).map(node=>node.id);
+    [rocket.className,wrong.className]=original;
+    return visible;
+ })()`);
+ assert.deepEqual(visibleNotices,['incoming-warning'],'rocket warning has priority over other messages');
+ console.log('MOBILE_NOTICE_PRIORITY_PASS');
  await setViewport(390,844);
  const down=(action,id)=>evalJS(`document.querySelector('[data-touch="${action}"]').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:${id},pointerType:'touch',isPrimary:true}))`);
  const end=(action,id,type='pointerup')=>evalJS(`document.querySelector('[data-touch="${action}"]').dispatchEvent(new PointerEvent('${type}',{bubbles:true,pointerId:${id},pointerType:'touch',isPrimary:true}))`);
@@ -223,16 +230,16 @@ async function verifyMobileCockpit(){
  assert.equal(await evalJS("document.querySelector('[data-touch=forward]').dataset.active"),'true','controls work after pause/resume');
  await end('forward',107);
  assert.equal(exceptions.length,0,'mobile JS exceptions: '+exceptions.join(' | '));
- console.log('MOBILE_COCKPIT_PASS five viewports, safe area, 44px, nonoverlap, multitouch/cancel/rotate/pause');
+ console.log('MOBILE_COCKPIT_PASS eight viewports, safe area, 44px, nonoverlap, multitouch/cancel/rotate/pause');
 }
 async function verifyPersistentGhostBrowser(){
- const saved=JSON.parse(await evalJS("JSON.stringify((()=>{const g=CyberRace.game.createLapGhostTracker();g.beginLap(1,{x:0,z:0,heading:0});for(let i=1;i<=180;i++)g.record({lap:1,elapsed:i*.1,x:i*.2,z:i*.05,heading:0});const valid=g.completeLap({lap:1,elapsed:18.1,x:38,z:9,heading:0,valid:true});const outcome=CyberRace.game.createLapGhostStore(localStorage).put('valley','universal:0-0-0',g.exportBest());return {valid,...outcome};})())"));
+ const saved=JSON.parse(await evalJS("JSON.stringify((()=>{const g=CyberRace.game.createLapGhostTracker();g.beginLap(1,{x:0,z:0,heading:0});for(let i=1;i<=180;i++)g.record({lap:1,elapsed:i*.1,x:i*.2,z:i*.05,heading:0});const valid=g.completeLap({lap:1,elapsed:18.1,x:38,z:9,heading:0,valid:true});const outcome=CyberRace.game.createLapGhostStore(localStorage).put(CyberRace.game.CONFIG.VALLEY_ROUTE_VERSION,'universal:0-0-0',g.exportBest());return {valid,...outcome};})())"));
  assert.deepEqual(saved,{valid:true,improved:true,persisted:true},'synthetic valid ghost stored in the real browser');
  await cdp('Page.enable');
  const before=await evalJS('performance.timeOrigin');
  await cdp('Page.reload',{ignoreCache:true});
  await until(()=>evalJS("performance.timeOrigin>"+before+"&&document.documentElement.dataset.cyberBoot==='ready'"),35000,'ghost reload boot');
- const stored=JSON.parse(await evalJS("JSON.stringify((()=>{const s=CyberRace.game.createLapGhostStore(localStorage),t=s.get('valley','universal:0-0-0');return {time:t?.time,frames:t?.frames.length,wrongRoute:s.get('city','universal:0-0-0')};})())"));
+ const stored=JSON.parse(await evalJS("JSON.stringify((()=>{const s=CyberRace.game.createLapGhostStore(localStorage),t=s.get(CyberRace.game.CONFIG.VALLEY_ROUTE_VERSION,'universal:0-0-0');return {time:t?.time,frames:t?.frames.length,wrongRoute:s.get('city','universal:0-0-0')};})())"));
  assert.equal(stored.time,18.1);assert.equal(stored.frames,182);assert.equal(stored.wrongRoute,null);
  await evalJS("document.querySelector('input[name=single-race-mode][value=blitz]').click()");
  await evalJS("document.getElementById('start-btn').click()");
@@ -240,7 +247,7 @@ async function verifyPersistentGhostBrowser(){
  assert.match(await evalJS("document.getElementById('lap-ghost-badge').textContent"),/18\.1 с/);
  // This synthetic trace does not match the real road; no fabricated pace delta.
  assert.equal(await evalJS("document.getElementById('lap-ghost-pace').textContent"),'');
- const comparison=JSON.parse(await evalJS("JSON.stringify((()=>{const trace=CyberRace.game.createLapGhostStore(localStorage).get('valley','universal:0-0-0');const tracker=CyberRace.game.createLapGhostTracker();tracker.importBest(trace);return {behind:tracker.paceAt({elapsed:12,x:20,z:5,heading:0}),ahead:tracker.paceAt({elapsed:8,x:20,z:5,heading:0}),far:tracker.paceAt({elapsed:12,x:900,z:900,heading:0})};})())"));
+ const comparison=JSON.parse(await evalJS("JSON.stringify((()=>{const trace=CyberRace.game.createLapGhostStore(localStorage).get(CyberRace.game.CONFIG.VALLEY_ROUTE_VERSION,'universal:0-0-0');const tracker=CyberRace.game.createLapGhostTracker();tracker.importBest(trace);return {behind:tracker.paceAt({elapsed:12,x:20,z:5,heading:0}),ahead:tracker.paceAt({elapsed:8,x:20,z:5,heading:0}),far:tracker.paceAt({elapsed:12,x:900,z:900,heading:0})};})())"));
  assert.deepEqual(comparison,{behind:2,ahead:-2,far:null},'Chrome browser pace API against persisted trace');
  const layout=JSON.parse(await evalJS("JSON.stringify((()=>{const r=document.getElementById('lap-ghost-badge').getBoundingClientRect();return {left:r.left,top:r.top,right:r.right,width:innerWidth,height:innerHeight};})())"));
  assert.ok(layout.left>=0&&layout.right<=layout.width,'ghost badge fits viewport');
@@ -424,46 +431,7 @@ async function run(){
  await evalJS("document.querySelector('#start-screen [data-setting=tutorialEnabled]').click()");
  assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).tutorialEnabled"),true);
  console.log('PILOT_TUTORIAL_SETTINGS_PASS legacy defaults, both synced switches, saved toggle');
- assert.equal(await evalJS("typeof CyberRace.game.createCornerSpotter"),'function','corner planner loaded');
- assert.equal(await evalJS("document.querySelectorAll('[data-setting=cornerSpotter]').length"),2);
- assert.equal(await evalJS("[...document.querySelectorAll('[data-setting=cornerSpotter]')].every(x=>x.checked)"),true,'legacy settings enable spotter');
- await evalJS("document.querySelector('#start-screen [data-setting=cornerSpotter]').click()");
- assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).cornerSpotter"),false);
- assert.equal(await evalJS("document.querySelector('#pause-menu [data-setting=cornerSpotter]').checked"),false);
- await evalJS("document.querySelector('#start-screen [data-setting=cornerSpotter]').click()");
- assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).cornerSpotter"),true);
- console.log('CORNER_SETTINGS_BROWSER_PASS old saves, dual synced switches and persistence');
-
- // Presentation fixture: simultaneous real-browser HUD geometry, not a claim of a live turn.
- for(const [width,height] of [[360,844],[390,844],[768,844],[1280,844],[800,600],[390,640],[360,460]]){
-  await cdp('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
-  const layout=JSON.parse(await evalJS(`JSON.stringify((()=>{
-   const spot=document.getElementById('corner-spotter'),series=document.getElementById('overtake-series'),
-     sector=document.getElementById('sector-timing');
-   spot.hidden=false;series.hidden=false;sector.hidden=false;
-   spot.dataset.severity='sharp';document.getElementById('corner-title').textContent='КРУТОЙ ПОВОРОТ НАПРАВО';
-   const rect=id=>{const r=document.getElementById(id).getBoundingClientRect();
-     return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};};
-   const intersects=(a,b)=>a.left<b.right-2&&a.right>b.left+2&&a.top<b.bottom-2&&a.bottom>b.top+2;
-   const r=rect('corner-spotter'),ids=['vehicle-status','right-hud','overtake-series','sector-timing','hud','speed-panel','minimap-canvas'];
-   const visible=getComputedStyle(spot).display!=='none';
-   const collisions=visible?ids.filter(id=>intersects(r,rect(id))):[];
-   const clipped=document.getElementById('corner-title').scrollWidth>document.getElementById('corner-title').clientWidth;
-   spot.hidden=true;series.hidden=true;sector.hidden=true;
-   return {visible,r,collisions,clipped};
-  })())`));
-  if(layout.visible){
-   assert.ok(layout.r.left>=0&&layout.r.right<=width&&layout.r.top>=0&&layout.r.bottom<=height,
-     'corner UI outside '+width+'x'+height+': '+JSON.stringify(layout));
-   assert.deepEqual(layout.collisions,[],'corner UI overlaps HUD at '+width+'x'+height+': '+JSON.stringify(layout));
-   assert.ok(!layout.clipped,'corner title clipped at '+width+'x'+height);
-  }
- }
- await cdp('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
- assert.equal(await evalJS("getComputedStyle(document.getElementById('corner-progress')).transitionDuration"),'0s');
- await cdp('Emulation.setEmulatedMedia',{features:[]});
- await cdp('Emulation.setDeviceMetricsOverride',{width:1280,height:844,deviceScaleFactor:1,mobile:false});
- console.log('CORNER_HUD_BROWSER_LAYOUT_PASS seven viewports, simultaneous HUD and reduced motion');
+ assert.equal(await evalJS("document.querySelectorAll('#corner-spotter, [data-setting=cornerSpotter]').length"),0,'turn card and switches are removed');
 
  for(const width of [360,390,768,1280]){
   await cdp('Emulation.setDeviceMetricsOverride',{width,height:844,deviceScaleFactor:1,mobile:false});
@@ -540,7 +508,7 @@ async function run(){
  console.log('SECTOR_HUD_BROWSER_LAYOUT_PASS 7 viewports, concurrent panels, readable deltas');
 
  // Prove a failed optional asset can recover on the same page after the network returns.
- await cdp('Network.setBlockedURLs',{urls:['*assets/garage/cars.js*']});
+ await cdp('Network.setBlockedURLs',{urls:['*assets/garage/*-views.png*']});
  await evalJS("document.getElementById('garage-btn').click()");
  await until(()=>evalJS("document.getElementById('garage-preview').dataset.ready==='false'"),15000);
  await evalJS("document.getElementById('garage-close').click()");
@@ -621,15 +589,14 @@ async function run(){
  await verifyAuxiliaryHudLane();
  await cdp('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyW',key:'w',windowsVirtualKeyCode:87});
  await until(()=>evalJS("document.getElementById('pilot-tutorial-heading').textContent.includes('2/3')"),13000,'real pilot drive action');
- await until(()=>evalJS("!document.getElementById('corner-spotter').hidden"),10000,'live corner warning while driving');
- assert.ok(await evalJS("/ПОВОРОТ/.test(document.getElementById('corner-title').textContent)"),'corner warning carries text');
- console.log('CORNER_REAL_DRIVE_BROWSER_PASS actual track, positive speed, visible directional warning');
+ assert.equal(await evalJS("document.getElementById('corner-spotter')===null"),true,'driving must not create the removed card');
  if(process.env.CYBER_ROAD_SCREENSHOT){
   const shot=await cdp('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
   writeFileSync(process.env.CYBER_ROAD_SCREENSHOT,Buffer.from(shot.data,'base64'));
   console.log('ROAD_VISUAL_CAPTURE '+process.env.CYBER_ROAD_SCREENSHOT);
  }
  await cdp('Input.dispatchKeyEvent',{type:'keyUp',code:'KeyW',key:'w',windowsVirtualKeyCode:87});
+ await evalJS('window.__qaCollectWeapons()');
  await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:550,y:380,button:'left',clickCount:1});
  await until(()=>evalJS("document.getElementById('pilot-tutorial-heading').textContent.includes('3/3')"),6000,'real gun firing completes pilot step');
  await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:550,y:380,button:'left',clickCount:1});
@@ -741,14 +708,6 @@ async function run(){
  assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).lapGhost"),true);
  assert.equal(await evalJS("document.getElementById('pause-menu').classList.contains('open')"),true,'ghost toggle must preserve pause');
  console.log('LAP_GHOST_PAUSE_SWITCH_PASS persisted toggle without unpausing');
- await until(()=>evalJS("document.getElementById('corner-spotter').hidden"),4000,'corner hidden while paused');
- await evalJS("document.querySelector('#pause-menu [data-setting=cornerSpotter]').click()");
- assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).cornerSpotter"),false);
- assert.equal(await evalJS("document.querySelector('#start-screen [data-setting=cornerSpotter]').checked"),false);
- assert.equal(await evalJS("document.getElementById('pause-menu').classList.contains('open')"),true);
- await evalJS("document.querySelector('#pause-menu [data-setting=cornerSpotter]').click()");
- assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).cornerSpotter"),true);
- console.log('CORNER_PAUSE_BROWSER_PASS hidden on pause and settings toggle does not resume');
  await evalJS("document.querySelector('#pause-menu [data-pilot-replay]').click()");
  assert.equal(await evalJS("JSON.parse(localStorage.getItem('cyberRaceSettings')).tutorialDone"),false,'replay re-arms completed tutorial');
  await evalJS("document.getElementById('resume-btn').click()");
@@ -867,6 +826,7 @@ async function run(){
 
  // Real Chrome event handlers with a disposable profile: a held fire input must
  // stop on window blur and must not resume firing after the pause is dismissed.
+ await evalJS('window.__qaCollectWeapons()');
  const ammoBeforeBlur=Number(await evalJS("document.getElementById('gun-ammo').textContent"));
  await evalJS("window.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true}))");
  await until(()=>evalJS("Number(document.getElementById('gun-ammo').textContent)<"+ammoBeforeBlur),10000,'held-fire precondition');
@@ -1088,6 +1048,9 @@ async function run(){
   await until(()=>evalJS("!document.getElementById('sector-timing').hidden"),25000,'industrial stage countdown');
   assert.ok((await evalJS("document.querySelector('#hud .hud-label').textContent")).includes('ЭТАП 3/3'));
   assert.equal(await evalJS("document.getElementById('lap-val').textContent"),'01/5');
+  assert.equal(Number(await evalJS("document.getElementById('gun-ammo').textContent")),0,'stage starts with no ammo');
+  assert.equal(Number(await evalJS("document.getElementById('rocket-count').textContent")),0,'stage starts with no rockets');
+  await evalJS('window.__qaCollectWeapons()');
   const ammunitionBefore=JSON.parse(await evalJS("JSON.stringify({gun:Number(document.getElementById('gun-ammo').textContent),rockets:Number(document.getElementById('rocket-count').textContent),nitro:Number(document.getElementById('nitro-charges').textContent)})"));
   await cdp('Input.dispatchKeyEvent',{type:'keyDown',code:'KeyW',key:'w',windowsVirtualKeyCode:87});
   await until(()=>evalJS("Number(document.getElementById('speed-val').textContent)>0"),12000);

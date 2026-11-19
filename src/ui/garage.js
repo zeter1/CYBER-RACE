@@ -5,15 +5,17 @@
   const {CAR_PROFILES,GARAGE_PAINTS,garagePaint,UPGRADES,buildProfile}=root.game;
   const byId=id=>document.getElementById(id),dialog=byId('garage-dialog'),opener=byId('garage-btn'),canvas=byId('garage-car-art'),preview=byId('garage-preview'),context=canvas.getContext('2d');
   const upgradeCards=new Map(),classSpecs=new Map(),crops=new Map(),painted=new Map();let draft,view='front',generation=0,artDataPromise;
+  const compactLayout=matchMedia('(max-width:1000px), (pointer:coarse) and (max-height:520px)');
   const make=(tag,cls,text)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(text!==undefined)el.textContent=text;return el;};
   const descriptions={universal:'Универсальный и сбалансированный.',interceptor:'Лёгкий, быстрый и манёвренный.',armored:'Максимальная защита и выносливость.'};
   for(const profile of Object.values(CAR_PROFILES)){
    const label=make('label','garage-class'),radio=make('input');radio.type='radio';radio.name='garage-class';radio.value=profile.id;radio.setAttribute('aria-label',profile.name+' — '+profile.description);
    radio.addEventListener('change',()=>{draft.classId=profile.id;update();});
-   const spec=make('span','garage-class-spec');label.append(radio,make('span','garage-class-description',descriptions[profile.id]),spec);byId('garage-classes').append(label);classSpecs.set(profile.id,spec);
+   const spec=make('span','garage-class-spec');label.append(radio,make('strong','garage-class-name',profile.name),make('span','garage-class-description',descriptions[profile.id]),spec);byId('garage-classes').append(label);classSpecs.set(profile.id,spec);
   }
   for(const paint of GARAGE_PAINTS){
    const label=make('label','garage-swatch'),radio=make('input');radio.type='radio';radio.name='garage-paint';radio.value=paint.id;radio.setAttribute('aria-label',paint.name);label.title=paint.name;
+   label.style.setProperty('--swatch-color','#'+paint.color.toString(16).padStart(6,'0'));
    radio.addEventListener('change',()=>{draft.paintId=paint.id;update();});label.append(radio);byId('garage-paints').append(label);
   }
   for(const [type,upgrade] of Object.entries(UPGRADES)){
@@ -37,7 +39,10 @@
   }
   function loadCrops(classId){
    if(crops.has(classId))return crops.get(classId);
-   const pending=loadData().then(data=>new Promise((resolve,reject)=>{
+   const source=location.protocol==='file:'
+    ?loadData().then(data=>data[classId])
+    :Promise.resolve('assets/garage/'+classId+'-views.png');
+   const pending=source.then(url=>new Promise((resolve,reject)=>{
     const image=new Image();image.onload=()=>{
      try{
       const cells=[];
@@ -51,7 +56,7 @@
       }
       resolve(cells);
      }catch(error){reject(error);}
-    };image.onerror=()=>reject(Error('Car image unavailable'));image.src=data[classId];
+    };image.onerror=()=>reject(Error('Car image unavailable'));image.src=url;
    })).catch(error=>{crops.delete(classId);throw error;});
    crops.set(classId,pending);return pending;
   }
@@ -77,7 +82,8 @@
    try{
     const sources=await loadCrops(classId);if(token!==generation||!dialog.open)return;const source=paintCrop(sources[index],classId,paintId,index),ratio=Math.min(devicePixelRatio||1,1.5),width=Math.max(1,Math.round(preview.clientWidth*ratio)),height=Math.max(1,Math.round(preview.clientHeight*ratio));
     canvas.width=width;canvas.height=height;const scale=Math.min(width*.82/source.width,height*.82/source.height),w=source.width*scale,h=source.height*scale;
-    context.clearRect(0,0,width,height);context.drawImage(source,(width-w)/2,height*.97-h,w,h);preview.setAttribute('aria-label',CAR_PROFILES[classId].name+', '+garagePaint(paintId).name+', вид '+{front:'спереди',side:'сбоку',rear:'сзади'}[view]);preview.dataset.ready='true';preview.dataset.classId=classId;preview.dataset.paintId=paintId;preview.dataset.view=view;
+    const y=compactLayout.matches?(height-h)/2:height*.97-h;
+    context.clearRect(0,0,width,height);context.drawImage(source,(width-w)/2,y,w,h);preview.setAttribute('aria-label',CAR_PROFILES[classId].name+', '+garagePaint(paintId).name+', вид '+{front:'спереди',side:'сбоку',rear:'сзади'}[view]);preview.dataset.ready='true';preview.dataset.classId=classId;preview.dataset.paintId=paintId;preview.dataset.view=view;
    }catch{if(token!==generation||!dialog.open)return;context.clearRect(0,0,canvas.width,canvas.height);preview.dataset.ready='false';byId('garage-art-status').textContent='Изображение недоступно. Выбор машины, цвета и покупки работают.';}
   }
   function update(){
@@ -102,12 +108,23 @@
   function fitText(){
    if(!dialog.open)return;
    for(const el of dialog.querySelectorAll('#garage-credits,#garage-model-name,#garage-stats dd,.garage-upgrade button')){
-    el.style.fontSize='';const size=parseFloat(getComputedStyle(el).fontSize),ratio=Math.min(1,el.clientWidth/Math.max(1,el.scrollWidth),el.clientHeight/Math.max(1,el.scrollHeight));
+    el.style.fontSize='';
+    if(compactLayout.matches)continue;
+    const size=parseFloat(getComputedStyle(el).fontSize),ratio=Math.min(1,el.clientWidth/Math.max(1,el.scrollWidth),el.clientHeight/Math.max(1,el.scrollHeight));
     if(ratio<1)el.style.fontSize=(size*ratio*.97)+'px';
    }
   }
   function close(){dialog.close();}
-  opener.addEventListener('click',()=>{if(opener.disabled||dialog.open)return;draft={...getSelection()};byId('garage-purchase-status').textContent='';onOpen();dialog.showModal();dialog.querySelector('.garage-viewport').scrollLeft=0;update();byId('garage-classes').querySelector('input:checked')?.focus({preventScroll:true});});
+  opener.addEventListener('click',()=>{
+   if(opener.disabled||dialog.open)return;
+   draft={...getSelection()};
+   byId('garage-purchase-status').textContent='';
+   onOpen();dialog.showModal();
+   dialog.querySelector('.garage-viewport').scrollTo(0,0);
+   update();
+   const first=compactLayout.matches?byId('garage-close'):byId('garage-classes').querySelector('input:checked');
+   first?.focus({preventScroll:true});
+  });
   byId('garage-close').addEventListener('click',close);byId('garage-cancel').addEventListener('click',close);byId('garage-apply').addEventListener('click',()=>{onApply({...draft});close();});
   dialog.addEventListener('close',()=>{generation++;onClose();opener.focus({preventScroll:true});});dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
   dialog.addEventListener('keydown',event=>{event.stopPropagation();if(event.key==='Escape'){event.preventDefault();close();return;}if(event.key!=='Tab')return;const controls=[...dialog.querySelectorAll('button,input:checked')].filter(el=>!el.disabled&&el.getClientRects().length),first=controls[0],last=controls[controls.length-1];if(event.shiftKey&&(document.activeElement===first||!dialog.contains(document.activeElement))){event.preventDefault();last.focus();}else if(!event.shiftKey&&(document.activeElement===last||!dialog.contains(document.activeElement))){event.preventDefault();first.focus();}});

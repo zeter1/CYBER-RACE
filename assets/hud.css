@@ -384,48 +384,6 @@ body.low-quality .threat-edge { box-shadow:none; }
   .threat-edge { transition:none; }
 }
 
-/* Corner spotter: low-occlusion telemetry, not a steering assist. */
-#corner-spotter {
-  position:absolute;top:40px;left:50%;transform:translateX(-50%);z-index:12;
-  width:276px;min-height:69px;padding:9px 12px 13px;display:grid;
-  grid-template-columns:42px minmax(0,1fr);align-items:center;gap:5px 11px;
-  border-color:rgba(86,223,242,.6);background:linear-gradient(145deg,rgba(9,26,41,.94),rgba(8,15,29,.95));
-  color:#f6f9fc;box-shadow:0 3px 13px rgba(0,0,0,.28);pointer-events:none;
-}
-#corner-spotter[hidden] { display:none; }
-#corner-spotter[data-severity="sharp"] { border-color:rgba(255,190,94,.85); }
-.corner-arrow { display:block;text-align:center;color:#80eff9;font:900 42px/1 Bahnschrift,'Segoe UI',sans-serif; }
-#corner-spotter[data-severity="sharp"] .corner-arrow { color:#ffd28d; }
-.corner-copy { display:flex;flex-direction:column;min-width:0;gap:3px; }
-.corner-eyebrow { font:750 9px/1.2 'Segoe UI',sans-serif;letter-spacing:1px;color:#a4c4d2; }
-#corner-title { font:850 15px/1.16 Bahnschrift,'Segoe UI',sans-serif;letter-spacing:.15px; }
-#corner-distance { color:#c6f7ff;font:850 13px/1.2 Bahnschrift,'Segoe UI',sans-serif; }
-#corner-spotter[data-severity="sharp"] #corner-distance { color:#ffe1aa; }
-.corner-track { grid-column:1/-1;height:4px;margin-top:2px;overflow:hidden;background:#364553;border-radius:4px; }
-#corner-progress { width:100%;height:100%;transform:scaleX(0);transform-origin:left center;
-  background:#80eff9;transition:transform .12s linear; }
-#corner-spotter[data-severity="sharp"] #corner-progress { background:#ffd28d; }
-@media (max-width:900px) {
-  #corner-spotter { width:240px;top:90px;padding:7px 10px 11px;grid-template-columns:33px minmax(0,1fr);gap:4px 8px; }
-  .corner-arrow { font-size:34px; }
-  #corner-title { font-size:13px; }
-}
-@media (max-width:600px) {
-  #corner-spotter { top:auto;bottom:calc(var(--hud-edge) + var(--hud-gauge) + 96px);
-    width:186px;min-height:0;padding:6px 9px 8px;grid-template-columns:30px minmax(0,1fr);gap:3px 7px; }
-  .corner-arrow { font-size:31px; }
-  .corner-eyebrow { font-size:8px;letter-spacing:.2px; }
-  #corner-title { font-size:12px; }
-  #corner-distance { font-size:11px; }
-}
-@media (max-width:600px) and (max-height:560px) {
-  /* No safe telemetry lane remains beside the full combat HUD on short phones. */
-  #corner-spotter { display:none!important; }
-}
-@media (prefers-reduced-motion:reduce) {
-  #corner-progress { transition:none; }
-}
-
 /* Tactical rear glance. Shown only while the player holds the view control. */
 #rearview-indicator {
   position:fixed;top:82px;left:50%;transform:translateX(-50%);z-index:19;
